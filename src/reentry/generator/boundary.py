@@ -148,11 +148,12 @@ def build_truncation_cases() -> list[PacketCase]:
 def build_oversized_cases() -> list[PacketCase]:
     cases = []
     header = _valid_header()
-    reachable_payload = b"\x00" * 4090
+    reachable_packet_size = 4 * 1024
+    reachable_payload = b"\x00" * (reachable_packet_size - c.PRIMARY_HEADER_SIZE)
     packet = SpacePacket(
         header=header,
         user_data=reachable_payload,
-        declared_data_length=len(reachable_payload) - 2,
+        declared_data_length=len(reachable_payload) - 1,
     )
     cases.append(
         PacketCase(
