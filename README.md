@@ -58,9 +58,26 @@ reentry list-cases
 Run against the local mock target:
 
 ```sh
-python tests/fixtures/mock_target.py --port 1234 &
-reentry run --config tests/fixtures/mock_target.toml --json report.json --junit report.xml
+scripts/run-local.sh
 ```
+
+The script stops the mock target when the run finishes. It uses UDP port `1234`;
+set `REENTRY_PORT` if that port is busy:
+
+```sh
+REENTRY_PORT=1235 scripts/run-local.sh
+```
+
+Run the real cFS/ci_lab target in Docker with the complete setup and cleanup flow:
+
+```sh
+scripts/run-cfs-docker.sh
+```
+
+Docker must be running, and host UDP port `1234` must be available. The script
+fails immediately if the port is busy, instead of continuing with a stopped
+container and producing misleading hang findings. The first Docker build can
+take a while because it compiles cFS; later builds use Docker's cache.
 
 ## CI
 
