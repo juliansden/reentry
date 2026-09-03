@@ -27,7 +27,7 @@ def to_junit_xml(findings: list[Finding]) -> str:
         if f.verdict.is_unsafe:
             failure_el = SubElement(case_el, "failure", message=f.verdict.value)
             failure_el.text = f.detail
-        elif f.verdict == Verdict.INCONCLUSIVE:
+        elif f.verdict in (Verdict.CLEAN_ACCEPT, Verdict.INCONCLUSIVE):
             SubElement(case_el, "system-out").text = f.detail
 
     return parseString(tostring(suite)).toprettyxml(indent="  ")

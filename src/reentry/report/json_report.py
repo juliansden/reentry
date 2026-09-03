@@ -18,6 +18,8 @@ def to_json(findings: list[Finding]) -> str:
                 "verdict": f.verdict.value,
                 "detail": f.detail,
                 "expect_safe_reject": f.case.expect_safe_reject,
+                "expect_accept": f.case.expect_accept,
+                "evidence": f.evidence,
             }
             for f in findings
         ],

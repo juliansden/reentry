@@ -19,6 +19,72 @@ def _valid_header(**overrides: int) -> PrimaryHeader:
     return header
 
 
+def _with_command_checksum(packet: bytes) -> bytes:
+    data = bytearray(packet)
+    data[7] = 0
+    checksum = 0xFF
+    for value in data:
+        checksum ^= value
+    data[7] = checksum
+    return bytes(data)
+
+
+def build_known_good_noop_case(apid: int = 42) -> list[PacketCase]:
+    """Build a valid cFE command with CI_LAB's NOOP function code (zero)."""
+    header = _valid_header(packet_type=1, sec_hdr_flag=1, apid=apid)
+    packet = SpacePacket(header=header, secondary_header=b"\x00\x00")
+    return [
+        PacketCase(
+            name="ci_lab_noop",
+            category="known_good",
+            packet_bytes=_with_command_checksum(packet.to_bytes()),
+            expect_safe_reject=False,
+            expect_accept=True,
+        )
+    ]
+
+
+def build_command_malformed_cases() -> list[PacketCase]:
+    """Build CI_LAB commands with one controlled command-level defect each."""
+    valid = build_known_good_noop_case()[0].packet_bytes
+    cases = []
+
+    bad_checksum = bytearray(valid)
+    bad_checksum[7] ^= 0x01
+    cases.append(
+        PacketCase(
+            name="command_bad_checksum",
+            category="command_malformed",
+            packet_bytes=bytes(bad_checksum),
+            expect_safe_reject=True,
+            checksum_valid=False,
+        )
+    )
+
+    invalid_function = bytearray(valid)
+    invalid_function[6] = 0xFF
+    cases.append(
+        PacketCase(
+            name="command_invalid_function",
+            category="command_malformed",
+            packet_bytes=_with_command_checksum(bytes(invalid_function)),
+            expect_safe_reject=True,
+        )
+    )
+
+    wrong_length = bytearray(valid)
+    wrong_length[4:6] = (2).to_bytes(2, "big")
+    cases.append(
+        PacketCase(
+            name="command_wrong_length",
+            category="command_malformed",
+            packet_bytes=_with_command_checksum(bytes(wrong_length)),
+            expect_safe_reject=True,
+        )
+    )
+    return cases
+
+
 def build_version_cases() -> list[PacketCase]:
     cases = []
     for version in range(1, c.VERSION_MAX + 1):
@@ -220,6 +286,8 @@ def build_degenerate_payload_cases() -> list[PacketCase]:
 
 def generate_all() -> list[PacketCase]:
     builders = (
+        build_known_good_noop_case,
+        build_command_malformed_cases,
         build_version_cases,
         build_apid_cases,
         build_seq_flags_cases,

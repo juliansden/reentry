@@ -12,3 +12,7 @@ class PacketCase:
     packet_bytes: bytes
     # True if a spec-conformant target should reject this input.
     expect_safe_reject: bool
+    # True if this is an explicit known-good command expected to be accepted.
+    expect_accept: bool = False
+    # False when a deliberately malformed checksum must survive APID retargeting.
+    checksum_valid: bool = True
