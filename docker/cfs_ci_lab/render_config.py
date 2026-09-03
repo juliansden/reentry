@@ -72,7 +72,11 @@ def main() -> int:
     args = parser.parse_args()
 
     resolved = json.loads(args.resolved_ids.read_text())
-    missing = [k for k in ("CI_LAB_SEND_HK_MID", "CI_LAB_CMD_UDP_PORT", "TO_LAB_TLM_PORT") if k not in resolved]
+    missing = [
+        k
+        for k in ("CI_LAB_SEND_HK_MID", "CI_LAB_CMD_UDP_PORT", "TO_LAB_TLM_PORT", "CI_LAB_HK_TLM_MID", "CI_LAB_CMD_MID")
+        if k not in resolved
+    ]
     if missing:
         print(f"error: resolved_ids.json is missing {missing}", file=sys.stderr)
         return 1

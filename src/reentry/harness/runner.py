@@ -21,6 +21,18 @@ class Finding:
     detail: str
 
 
+def _with_command_checksum(packet: bytes) -> bytes:
+    if len(packet) < 8:
+        return packet
+    data = bytearray(packet)
+    data[7] = 0
+    checksum = 0xFF
+    for value in data:
+        checksum ^= value
+    data[7] = checksum
+    return bytes(data)
+
+
 def _load_oracle(config: RunConfig) -> Oracle:
     module_path, _, class_name = config.oracle.plugin.rpartition(".")
     oracle_cls = getattr(importlib.import_module(module_path), class_name)
@@ -52,11 +64,16 @@ def _select_cases(config: RunConfig) -> list[PacketCase]:
             header = PrimaryHeader.unpack(case.packet_bytes)
             header.apid = config.transport.target_apid
             header.packet_type = 1
+            if case.category != "secondary_header":
+                header.sec_hdr_flag = 1
+            packet = header.pack() + case.packet_bytes[6:]
+            if case.category != "secondary_header":
+                packet = _with_command_checksum(packet)
             targeted.append(
                 PacketCase(
                     name=case.name,
                     category=case.category,
-                    packet_bytes=header.pack() + case.packet_bytes[6:],
+                    packet_bytes=packet,
                     expect_safe_reject=case.expect_safe_reject,
                 )
             )
