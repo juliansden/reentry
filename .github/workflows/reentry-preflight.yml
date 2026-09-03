@@ -68,6 +68,8 @@ jobs:
           python docker/cfs_ci_lab/resolve_ids.py /tmp/generated_headers /tmp/resolved_ids.json
       - name: render reentry.toml from the resolved values
         run: python docker/cfs_ci_lab/render_config.py /tmp/resolved_ids.json /tmp/reentry.toml
+      - name: enable TO_LAB telemetry output and ci_lab HK subscription
+        run: python docker/cfs_ci_lab/enable_to_lab.py /tmp/resolved_ids.json --destination-ip 172.17.0.1
       - run: reentry run --config /tmp/reentry.toml --json report.json --junit report.xml
       - uses: dorny/test-reporter@v2
         if: always()
