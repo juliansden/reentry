@@ -34,4 +34,4 @@ filterwarnings = [
 # Version is bumped in-place here (feat: -> minor, fix: -> patch, BREAKING CHANGE: -> major).
 version_toml = ["pyproject.toml:project.version"]
 branch = "main"
-build_command = false
+build_command = ""
