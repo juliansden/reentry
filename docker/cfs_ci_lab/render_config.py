@@ -3,10 +3,8 @@
 Builds the actual HK-request packet bytes using reentry's own CCSDS library (not
 hand-rolled bytes), so the wire format stays consistent with the rest of the project.
 
-CAVEAT (flagged as an open risk in the project plan): CI_LAB_SEND_HK_MID's numeric
-value is mapped to an APID via the classic CFE MsgId encoding (APID = MID & 0x7FF),
-and the command secondary header's checksum here is a placeholder (0x00). Both need
-confirming/fixing against a real running target — cFE may reject an incorrect checksum.
+CI_LAB_SEND_HK_MID's numeric value is mapped to an APID via the classic CFE MsgId
+encoding (APID = MID & 0x7FF). Command packets use cFE's XOR checksum convention.
 """
 
 from __future__ import annotations
@@ -20,6 +18,16 @@ from reentry.ccsds.packet import PrimaryHeader, SpacePacket
 
 APID_MASK = 0x07FF
 
+
+def _with_checksum(packet: bytes) -> bytes:
+    data = bytearray(packet)
+    data[7] = 0
+    checksum = 0xFF
+    for value in data:
+        checksum ^= value
+    data[7] = checksum
+    return bytes(data)
+
 TOML_TEMPLATE = """\
 # Auto-rendered by render_config.py from resolve_ids.py's output — do not hand-edit.
 [transport]
@@ -28,6 +36,8 @@ host = "{host}"
 port = {port}
 listen_port = {listen_port}
 allowed_reply_host = "{allowed_reply_host}"
+allowed_reply_apid = {allowed_reply_apid}
+target_apid = {target_apid}
 probe_payload_hex = "{payload_hex}"
 
 [oracle]
@@ -47,10 +57,10 @@ def build_hk_request_payload(send_hk_mid: int) -> bytes:
         seq_flags=0b11,
         seq_count=0,
     )
-    # cFE command secondary header: function code + checksum. Checksum is a placeholder.
+    # cFE command secondary header: function code + checksum.
     secondary_header = bytes([0x00, 0x00])
     packet = SpacePacket(header=header, secondary_header=secondary_header)
-    return packet.to_bytes()
+    return _with_checksum(packet.to_bytes())
 
 
 def main() -> int:
@@ -74,6 +84,8 @@ def main() -> int:
             port=resolved["CI_LAB_CMD_UDP_PORT"],
             listen_port=resolved["TO_LAB_TLM_PORT"],
             allowed_reply_host=args.allowed_reply_host,
+            allowed_reply_apid=resolved["CI_LAB_HK_TLM_MID"] & APID_MASK,
+            target_apid=resolved["CI_LAB_CMD_MID"] & APID_MASK,
             payload_hex=payload.hex(),
         )
     )

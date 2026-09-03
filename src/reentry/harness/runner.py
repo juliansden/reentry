@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib
 from dataclasses import dataclass
 
+from reentry.ccsds.packet import PrimaryHeader
 from reentry.generator.boundary import generate_all
 from reentry.generator.cases import PacketCase
 from reentry.harness.config import RunConfig
@@ -36,11 +37,30 @@ def _build_transport(config: RunConfig) -> Transport:
         probe_payload=t.probe_payload,
         listen_port=t.listen_port,
         allowed_reply_host=t.allowed_reply_host,
+        allowed_reply_apid=t.allowed_reply_apid,
     )
 
 
 def _select_cases(config: RunConfig) -> list[PacketCase]:
     cases = generate_all()
+    if config.transport.target_apid is not None:
+        targeted = []
+        for case in cases:
+            if case.category == "apid" or len(case.packet_bytes) < 6:
+                targeted.append(case)
+                continue
+            header = PrimaryHeader.unpack(case.packet_bytes)
+            header.apid = config.transport.target_apid
+            header.packet_type = 1
+            targeted.append(
+                PacketCase(
+                    name=case.name,
+                    category=case.category,
+                    packet_bytes=header.pack() + case.packet_bytes[6:],
+                    expect_safe_reject=case.expect_safe_reject,
+                )
+            )
+        cases = targeted
     if config.include_categories is not None:
         cases = [c for c in cases if c.category in config.include_categories]
     if config.exclude_categories:

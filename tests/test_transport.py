@@ -39,7 +39,7 @@ def test_udp_transport_receive_returns_raw_bytes(mock_target):
         transport.send(b"HK?")
         reply = transport.receive(timeout=2.0)
         assert reply is not None
-        assert len(reply) == 8  # 6-byte dummy header + 2 counter bytes
+        assert len(reply) == 28  # cFS-compatible telemetry header and payload
     finally:
         transport.close()
 
@@ -63,6 +63,18 @@ def test_udp_transport_accepts_replies_from_expected_host():
     try:
         sender.sendto(b"expected", ("127.0.0.1", port))
         assert receiver.receive(timeout=0.1) == b"expected"
+    finally:
+        sender.close()
+        receiver.close()
+
+
+def test_udp_transport_ignores_replies_with_unexpected_apid():
+    receiver = UDPTransport("127.0.0.1", 1, listen_port=0, allowed_reply_apid=132)
+    port = receiver._recv_sock.getsockname()[1]
+    sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sender.sendto(b"\x08\x08" + b"\x00" * 6, ("127.0.0.1", port))
+        assert receiver.receive(timeout=0.1) is None
     finally:
         sender.close()
         receiver.close()
