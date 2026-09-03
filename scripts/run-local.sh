@@ -10,12 +10,20 @@ if [[ ! -x "$python_bin" ]]; then
 fi
 
 port="${REENTRY_PORT:-1234}"
+target_args=(--port "$port")
+if [[ "${1:-}" == "--buggy" ]]; then
+    target_args+=(--buggy)
+elif [[ $# -gt 0 ]]; then
+    echo "usage: scripts/run-local.sh [--buggy]" >&2
+    exit 2
+fi
+
 if lsof -nP -iUDP:"$port" >/dev/null 2>&1; then
     echo "UDP port $port is already in use; stop that process or set REENTRY_PORT." >&2
     exit 1
 fi
 
-"$python_bin" tests/fixtures/mock_target.py --port "$port" &
+"$python_bin" tests/fixtures/mock_target.py "${target_args[@]}" &
 target_pid=$!
 config="$(mktemp)"
 trap 'rm -f "$config"; kill "$target_pid" 2>/dev/null || true' EXIT

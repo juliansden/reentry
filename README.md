@@ -68,6 +68,12 @@ set `REENTRY_PORT` if that port is busy:
 REENTRY_PORT=1235 scripts/run-local.sh
 ```
 
+Run the intentionally faulty mock target to verify unsafe-result detection:
+
+```sh
+scripts/run-local.sh --buggy
+```
+
 Run the real cFS/ci_lab target in Docker with the complete setup and cleanup flow:
 
 ```sh
