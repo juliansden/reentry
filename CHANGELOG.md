@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.1.1 (2026-09-03)
+
+### Bug Fixes
+
+- Bump actions/checkout to v5 to clear Node 20 deprecation warning
+  ([`9572b6d`](https://github.com/juliansden/reentry/commit/9572b6d830fb9ec17f4c775b9615618b2d833790))
+
+
 ## v0.1.0 (2026-09-03)
 
 ### Bug Fixes
