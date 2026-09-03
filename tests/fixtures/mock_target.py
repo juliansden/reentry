@@ -38,9 +38,12 @@ class MockTarget:
         self._error_count = 0
 
     EXPECTED_APID = 42
+    # Mirrors a real target's finite command-buffer size: even a structurally
+    # valid packet larger than this is rejected, not just parsed-and-accepted.
+    MAX_COMMAND_SIZE = 2048
 
     def _is_well_formed(self, data: bytes) -> bool:
-        if len(data) < PRIMARY_HEADER_SIZE:
+        if len(data) < PRIMARY_HEADER_SIZE or len(data) > self.MAX_COMMAND_SIZE:
             return False
         header = PrimaryHeader.unpack(data)
         payload_len = len(data) - PRIMARY_HEADER_SIZE
@@ -53,7 +56,7 @@ class MockTarget:
         )
 
     def _handle_command(self, data: bytes) -> None:
-        if self._buggy and len(data) > 2048:
+        if self._buggy and len(data) > self.MAX_COMMAND_SIZE:
             raise RuntimeError("simulated unhandled overflow in buggy mode")
         if self._is_well_formed(data):
             self._accept_count += 1
