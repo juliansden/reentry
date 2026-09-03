@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v0.2.0 (2026-09-03)
+
+### Bug Fixes
+
+- Make cFS verdicts observable
+  ([`efb92e2`](https://github.com/juliansden/reentry/commit/efb92e2e57a9a5ab9828b601544599ebf63a6815))
+
+### Features
+
+- Distinguish safely dropped packets
+  ([`86ffa2e`](https://github.com/juliansden/reentry/commit/86ffa2e2e17033ecee4703d43b3aa5a423a67674))
+
+
 ## v0.1.6 (2026-09-03)
 
 ### Bug Fixes
