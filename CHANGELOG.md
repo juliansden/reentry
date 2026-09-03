@@ -1,6 +1,21 @@
 # CHANGELOG
 
 
+## v0.1.5 (2026-09-03)
+
+### Bug Fixes
+
+- Address review feedback in run scripts
+  ([`7069b1e`](https://github.com/juliansden/reentry/commit/7069b1e1dc0524539fe5ad106f22a8dcfe47f64b))
+
+Co-authored-by: juliansden <66048332+juliansden@users.noreply.github.com>
+
+### Chores
+
+- Add local and Docker run scripts
+  ([`311f720`](https://github.com/juliansden/reentry/commit/311f72048289968ea89247b0e276aa8ab66589e5))
+
+
 ## v0.1.4 (2026-09-03)
 
 ### Bug Fixes
