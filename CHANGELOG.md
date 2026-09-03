@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v0.1.2 (2026-09-03)
+
+### Bug Fixes
+
+- Resolve Dockerfile lint warnings
+  ([`ecc82cb`](https://github.com/juliansden/reentry/commit/ecc82cbbed0c953c1e148c4187d9e942c91d7946))
+
+### Documentation
+
+- Add project README and ignore local environments
+  ([`ce2433a`](https://github.com/juliansden/reentry/commit/ce2433aff5f8991c9d842757524b49958a1a0a1c))
+
+
 ## v0.1.1 (2026-09-03)
 
 ### Bug Fixes
