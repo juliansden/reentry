@@ -44,8 +44,13 @@ docker run -d \
 created_container=1
 
 ready=0
-for _ in $(seq 1 30); do
-    if docker logs "$container_name" 2>&1 | grep -q "CFE_ES_Main"; then
+for _ in $(seq 1 60); do
+    if ! docker inspect -f '{{.State.Running}}' "$container_name" 2>/dev/null | grep -q '^true$'; then
+        echo "cFS container stopped before becoming operational." >&2
+        exit 1
+    fi
+    logs="$(docker logs "$container_name" 2>&1)"
+    if grep -q "CFE_ES_Main entering OPERATIONAL state" <<< "$logs"; then
         ready=1
         break
     fi
@@ -58,10 +63,40 @@ fi
 
 docker cp "$container_name:/cfs/generated_headers" "$headers_dir"
 "$python_bin" docker/cfs_ci_lab/resolve_ids.py "$headers_dir" "$resolved_ids"
-telemetry_source="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$container_name")"
-"$python_bin" docker/cfs_ci_lab/render_config.py "$resolved_ids" "$config" --allowed-reply-host "$telemetry_source"
+"$python_bin" docker/cfs_ci_lab/render_config.py "$resolved_ids" "$config" --allowed-reply-host 127.0.0.1
 
 host_ip="$(docker exec "$container_name" getent ahostsv4 host.docker.internal | awk 'NR == 1 {print $1}')"
 "$python_bin" docker/cfs_ci_lab/enable_to_lab.py "$resolved_ids" --destination-ip "$host_ip"
+
+if ! "$python_bin" - "$config" <<'PY'
+import socket
+import sys
+import tomllib
+
+from reentry.oracle.ci_lab import parse_command_counters
+
+with open(sys.argv[1], "rb") as config_file:
+    config = tomllib.load(config_file)
+transport = config["transport"]
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+sock.bind(("0.0.0.0", transport["listen_port"]))
+sock.settimeout(5.0)
+sock.sendto(
+    bytes.fromhex(transport["probe_payload_hex"]),
+    (transport["host"], transport["port"]),
+)
+try:
+    while True:
+        reply, address = sock.recvfrom(65535)
+        if address[0] == transport["allowed_reply_host"]:
+            parse_command_counters(reply)
+            break
+finally:
+    sock.close()
+PY
+then
+    echo "cFS did not return an HK telemetry reply after TO_LAB setup." >&2
+    exit 1
+fi
 
 "$python_bin" -m reentry.cli run --config "$config" --json report.json --junit report.xml
