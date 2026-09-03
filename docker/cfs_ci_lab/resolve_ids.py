@@ -56,7 +56,10 @@ def main() -> int:
         print(f"error: could not resolve {missing} under {args.build_tree}", file=sys.stderr)
 
     args.output.write_text(json.dumps(found, indent=2) + "\n")
-    print(f"wrote {args.output} with {found}")
+    if missing:
+        print(f"wrote partial {args.output} with {found}", file=sys.stderr)
+    else:
+        print(f"wrote {args.output} with {found}")
     return 1 if missing else 0
 
 

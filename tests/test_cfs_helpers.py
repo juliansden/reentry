@@ -1,6 +1,7 @@
 import json
+import sys
 
-from docker.cfs_ci_lab.resolve_ids import find_resolved_defines
+from docker.cfs_ci_lab.resolve_ids import find_resolved_defines, main
 from docker.cfs_ci_lab.enable_to_lab import build_add_packet, build_enable_packet
 
 
@@ -26,6 +27,25 @@ def test_find_resolved_defines_reads_build_artifact(tmp_path):
 
 def test_find_resolved_defines_returns_empty_without_artifact(tmp_path):
     assert find_resolved_defines(tmp_path) == {}
+
+
+def test_resolve_ids_main_reports_partial_output_on_missing_values(tmp_path, monkeypatch, capsys):
+    artifact = tmp_path / "default_cpu1" / "ci_lab_ids.json"
+    artifact.parent.mkdir()
+    artifact.write_text(json.dumps({"CI_LAB_CMD_MID": 0x1884}))
+    output = tmp_path / "resolved_ids.json"
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["resolve_ids.py", str(tmp_path), str(output)],
+    )
+
+    assert main() == 1
+    captured = capsys.readouterr()
+    assert "wrote partial" in captured.err
+    assert "wrote " not in captured.out
+    assert json.loads(output.read_text()) == {"CI_LAB_CMD_MID": 0x1884}
 
 
 def test_build_enable_packet_has_valid_checksum_and_payload():
