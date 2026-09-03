@@ -1,6 +1,22 @@
 # CHANGELOG
 
 
+## v0.1.4 (2026-09-03)
+
+### Bug Fixes
+
+- Align telemetry source docs and add expected-source UDP test
+  ([`bd54fd6`](https://github.com/juliansden/reentry/commit/bd54fd6017055d393d8628358a1aa2dd43603e61))
+
+Co-authored-by: juliansden <66048332+juliansden@users.noreply.github.com>
+
+- Filter ci_lab telemetry replies by source
+  ([`ab4514c`](https://github.com/juliansden/reentry/commit/ab4514c48282d8d1cfb3c8035a3196f3ea390555))
+
+- Restrict ci_lab UDP command port to loopback
+  ([`74cdd74`](https://github.com/juliansden/reentry/commit/74cdd74dacefb05ee4f91787f2f3f6c5ae68715b))
+
+
 ## v0.1.3 (2026-09-03)
 
 ### Bug Fixes
