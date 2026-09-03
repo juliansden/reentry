@@ -35,6 +35,7 @@ def _build_transport(config: RunConfig) -> Transport:
         port=t.port,
         probe_payload=t.probe_payload,
         listen_port=t.listen_port,
+        allowed_reply_host=t.allowed_reply_host,
     )
 
 

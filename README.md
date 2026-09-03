@@ -26,7 +26,7 @@ docker build -t cfs-ci-lab docker/cfs_ci_lab
 docker run -d --name cfs-ci-lab --privileged --sysctl fs.mqueue.msg_max=1024 --add-host=host.docker.internal:host-gateway -p 127.0.0.1:1234:1234/udp cfs-ci-lab
 docker cp cfs-ci-lab:/cfs/generated_headers /tmp/generated_headers
 python docker/cfs_ci_lab/resolve_ids.py /tmp/generated_headers /tmp/resolved_ids.json
-python docker/cfs_ci_lab/render_config.py /tmp/resolved_ids.json /tmp/reentry.toml
+python docker/cfs_ci_lab/render_config.py /tmp/resolved_ids.json /tmp/reentry.toml --allowed-reply-host 127.0.0.1
 HOST_IP=$(docker exec cfs-ci-lab getent ahostsv4 host.docker.internal | awk 'NR == 1 {print $1}')
 python docker/cfs_ci_lab/enable_to_lab.py /tmp/resolved_ids.json --destination-ip "$HOST_IP"
 reentry run --config /tmp/reentry.toml --json report.json --junit report.xml
