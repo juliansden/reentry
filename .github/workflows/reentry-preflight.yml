@@ -51,7 +51,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: docker build -t cfs-ci-lab docker/cfs_ci_lab
-      - run: docker run -d --name cfs-ci-lab --privileged --sysctl fs.mqueue.msg_max=1024 --add-host=host.docker.internal:host-gateway -p 1234:1234/udp cfs-ci-lab
+      - run: docker run -d --name cfs-ci-lab --privileged --sysctl fs.mqueue.msg_max=1024 --add-host=host.docker.internal:host-gateway -p 127.0.0.1:1234:1234/udp cfs-ci-lab
       - name: wait for cFE to boot
         run: |
           for i in $(seq 1 30); do

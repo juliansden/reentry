@@ -22,7 +22,8 @@ host-side helpers to resolve IDs, enable TO_LAB telemetry, and render the config
 
 ```sh
 docker build -t cfs-ci-lab docker/cfs_ci_lab
-docker run -d --name cfs-ci-lab --privileged --sysctl fs.mqueue.msg_max=1024 --add-host=host.docker.internal:host-gateway -p 1234:1234/udp cfs-ci-lab
+# Bind ci_lab's command port only on the host loopback interface.
+docker run -d --name cfs-ci-lab --privileged --sysctl fs.mqueue.msg_max=1024 --add-host=host.docker.internal:host-gateway -p 127.0.0.1:1234:1234/udp cfs-ci-lab
 docker cp cfs-ci-lab:/cfs/generated_headers /tmp/generated_headers
 python docker/cfs_ci_lab/resolve_ids.py /tmp/generated_headers /tmp/resolved_ids.json
 python docker/cfs_ci_lab/render_config.py /tmp/resolved_ids.json /tmp/reentry.toml
