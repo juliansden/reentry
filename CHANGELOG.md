@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v0.1.6 (2026-09-03)
+
+### Bug Fixes
+
+- Wait for cFS telemetry readiness
+  ([`a9afcb5`](https://github.com/juliansden/reentry/commit/a9afcb56941a51f25184513ad0dfa02913fe2c30))
+
+### Testing
+
+- Support buggy local target mode
+  ([`46e465c`](https://github.com/juliansden/reentry/commit/46e465ca008309f36e7c6e90073f815d21564d44))
+
+
 ## v0.1.5 (2026-09-03)
 
 ### Bug Fixes
