@@ -1,0 +1,11 @@
+[transport]
+kind = "udp"
+host = "127.0.0.1"
+port = 1234
+probe_payload_hex = "484b3f"  # b"HK?"
+
+[oracle]
+plugin = "reentry.oracle.ci_lab.CiLabOracle"
+
+[oracle.args]
+hk_request_payload_hex = "484b3f"

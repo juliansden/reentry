@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "reentry"
+version = "0.1.0"
+description = "CCSDS Space Packet conformance and robustness-testing harness"
+requires-python = ">=3.11"
+dependencies = [
+    "typer>=0.12",
+    "pydantic>=2.6",
+]
+
+[project.scripts]
+reentry = "reentry.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/reentry"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = [
+    # test_runner_against_buggy_mock_target_detects_crash deliberately crashes a thread.
+    "ignore::pytest.PytestUnhandledThreadExceptionWarning",
+]
+
+[tool.semantic_release]
+# Version is bumped in-place here (feat: -> minor, fix: -> patch, BREAKING CHANGE: -> major).
+version_toml = ["pyproject.toml:project.version"]
+branch = "main"
+build_command = false

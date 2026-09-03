@@ -1,0 +1,96 @@
+name: reentry pre-flight
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - run: pip install -e .[dev]
+      - run: pytest -v
+
+  mock-target-preflight:
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - run: pip install -e .
+      - name: start mock target and run reentry against it
+        # Backgrounded in the same step/shell as the client call — a step boundary
+        # would risk the background listener being killed before the next step runs.
+        run: |
+          python tests/fixtures/mock_target.py --port 1234 &
+          sleep 1
+          reentry run --config tests/fixtures/mock_target.toml --json report.json --junit report.xml
+      - uses: dorny/test-reporter@v2
+        if: always()
+        with:
+          name: reentry findings (mock target)
+          path: report.xml
+          reporter: java-junit
+
+  cfs_ci_lab-preflight:
+    # Heavier real-target run: build & boot the actual cFS/ci_lab sandbox.
+    # Manual trigger only — not part of the fast per-push gate.
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t cfs-ci-lab docker/cfs_ci_lab
+      - run: docker run -d --name cfs-ci-lab -p 1234:1234/udp cfs-ci-lab
+      - name: wait for cFE to boot
+        run: |
+          for i in $(seq 1 30); do
+            docker logs cfs-ci-lab 2>&1 | grep -q "CFE_ES_Main" && break
+            sleep 1
+          done
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - run: pip install -e .
+      - name: extract real ci_lab MID/APID/port values from this build
+        run: |
+          docker cp cfs-ci-lab:/cfs/generated_headers /tmp/generated_headers
+          python docker/cfs_ci_lab/resolve_ids.py /tmp/generated_headers /tmp/resolved_ids.json
+      - name: render reentry.toml from the resolved values
+        run: python docker/cfs_ci_lab/render_config.py /tmp/resolved_ids.json /tmp/reentry.toml
+      - run: reentry run --config /tmp/reentry.toml --json report.json --junit report.xml
+      - uses: dorny/test-reporter@v2
+        if: always()
+        with:
+          name: reentry findings (real ci_lab)
+          path: report.xml
+          reporter: java-junit
+      - name: stop and remove the sandbox container
+        if: always()
+        run: docker rm -f cfs-ci-lab
+
+  release:
+    # Commit-driven version bump: analyzes Conventional Commits since the last release.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: python-semantic-release/python-semantic-release@v9
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+

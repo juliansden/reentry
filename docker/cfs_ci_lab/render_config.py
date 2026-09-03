@@ -1,0 +1,80 @@
+"""Renders a real reentry.toml for the ci_lab sandbox from resolve_ids.py's output.
+
+Builds the actual HK-request packet bytes using reentry's own CCSDS library (not
+hand-rolled bytes), so the wire format stays consistent with the rest of the project.
+
+CAVEAT (flagged as an open risk in the project plan): CI_LAB_SEND_HK_MID's numeric
+value is mapped to an APID via the classic CFE MsgId encoding (APID = MID & 0x7FF),
+and the command secondary header's checksum here is a placeholder (0x00). Both need
+confirming/fixing against a real running target — cFE may reject an incorrect checksum.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+from reentry.ccsds.packet import PrimaryHeader, SpacePacket
+
+APID_MASK = 0x07FF
+
+TOML_TEMPLATE = """\
+# Auto-rendered by render_config.py from resolve_ids.py's output — do not hand-edit.
+[transport]
+kind = "udp"
+host = "{host}"
+port = {port}
+probe_payload_hex = "{payload_hex}"
+
+[oracle]
+plugin = "reentry.oracle.ci_lab.CiLabOracle"
+
+[oracle.args]
+hk_request_payload_hex = "{payload_hex}"
+"""
+
+
+def build_hk_request_payload(send_hk_mid: int) -> bytes:
+    header = PrimaryHeader(
+        version=0,
+        packet_type=1,  # command
+        sec_hdr_flag=1,
+        apid=send_hk_mid & APID_MASK,
+        seq_flags=0b11,
+        seq_count=0,
+    )
+    # cFE command secondary header: function code + checksum. Checksum is a placeholder.
+    secondary_header = bytes([0x00, 0x00])
+    packet = SpacePacket(header=header, secondary_header=secondary_header)
+    return packet.to_bytes()
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("resolved_ids", type=Path, help="Path to resolve_ids.py's resolved_ids.json")
+    parser.add_argument("output", type=Path, help="Path to write the rendered reentry.toml")
+    parser.add_argument("--host", default="127.0.0.1")
+    args = parser.parse_args()
+
+    resolved = json.loads(args.resolved_ids.read_text())
+    missing = [k for k in ("CI_LAB_SEND_HK_MID", "CI_LAB_CMD_UDP_PORT") if k not in resolved]
+    if missing:
+        print(f"error: resolved_ids.json is missing {missing}", file=sys.stderr)
+        return 1
+
+    payload = build_hk_request_payload(resolved["CI_LAB_SEND_HK_MID"])
+    args.output.write_text(
+        TOML_TEMPLATE.format(
+            host=args.host,
+            port=resolved["CI_LAB_CMD_UDP_PORT"],
+            payload_hex=payload.hex(),
+        )
+    )
+    print(f"wrote {args.output}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

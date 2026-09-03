@@ -1,0 +1,62 @@
+"""Orchestrates: generate cases -> deliver via transport -> judge via oracle -> findings."""
+
+from __future__ import annotations
+
+import importlib
+from dataclasses import dataclass
+
+from reentry.generator.boundary import generate_all
+from reentry.generator.cases import PacketCase
+from reentry.harness.config import RunConfig
+from reentry.oracle.base import Oracle, Verdict
+from reentry.transport.base import Transport
+from reentry.transport.udp import UDPTransport
+
+
+@dataclass(frozen=True)
+class Finding:
+    case: PacketCase
+    verdict: Verdict
+    detail: str
+
+
+def _load_oracle(config: RunConfig) -> Oracle:
+    module_path, _, class_name = config.oracle.plugin.rpartition(".")
+    oracle_cls = getattr(importlib.import_module(module_path), class_name)
+    return oracle_cls(**config.oracle.args)
+
+
+def _build_transport(config: RunConfig) -> Transport:
+    t = config.transport
+    if t.kind != "udp":
+        raise ValueError(f"unsupported transport kind: {t.kind!r}")
+    return UDPTransport(
+        host=t.host,
+        port=t.port,
+        probe_payload=t.probe_payload,
+        listen_port=t.listen_port,
+    )
+
+
+def _select_cases(config: RunConfig) -> list[PacketCase]:
+    cases = generate_all()
+    if config.include_categories is not None:
+        cases = [c for c in cases if c.category in config.include_categories]
+    if config.exclude_categories:
+        cases = [c for c in cases if c.category not in config.exclude_categories]
+    return cases
+
+
+class Runner:
+    def __init__(self, config: RunConfig) -> None:
+        self._config = config
+
+    def run(self) -> list[Finding]:
+        cases = _select_cases(self._config)
+        oracle = _load_oracle(self._config)
+        findings: list[Finding] = []
+        with _build_transport(self._config) as transport:
+            for case in cases:
+                verdict, detail = oracle.judge(case, transport)
+                findings.append(Finding(case=case, verdict=verdict, detail=detail))
+        return findings
