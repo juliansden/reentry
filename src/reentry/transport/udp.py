@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import socket
+import time
 
 from reentry.transport.base import Transport
 
@@ -21,9 +22,11 @@ class UDPTransport(Transport):
         probe_payload: bytes = b"",
         listen_host: str = "0.0.0.0",
         listen_port: int | None = None,
+        allowed_reply_host: str | None = None,
     ) -> None:
         self._addr = (host, port)
         self._probe_payload = probe_payload
+        self._allowed_reply_host = allowed_reply_host
         self._send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         if listen_port is not None:
             self._recv_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -40,12 +43,18 @@ class UDPTransport(Transport):
             pass
 
     def receive(self, timeout: float) -> bytes | None:
-        self._recv_sock.settimeout(timeout)
-        try:
-            data, _addr = self._recv_sock.recvfrom(65535)
-            return data
-        except (TimeoutError, OSError):
-            return None
+        deadline = time.monotonic() + timeout
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return None
+            self._recv_sock.settimeout(remaining)
+            try:
+                data, address = self._recv_sock.recvfrom(65535)
+            except (TimeoutError, OSError):
+                return None
+            if self._allowed_reply_host is None or address[0] == self._allowed_reply_host:
+                return data
 
     def probe(self, timeout: float) -> bool:
         self._drain_stale_replies()

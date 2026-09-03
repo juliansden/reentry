@@ -13,6 +13,7 @@ class TransportConfig(BaseModel):
     host: str
     port: int
     listen_port: int | None = None
+    allowed_reply_host: str | None = None
     probe_payload_hex: str = ""
 
     @property

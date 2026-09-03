@@ -27,6 +27,7 @@ kind = "udp"
 host = "{host}"
 port = {port}
 listen_port = {listen_port}
+allowed_reply_host = "{allowed_reply_host}"
 probe_payload_hex = "{payload_hex}"
 
 [oracle]
@@ -57,6 +58,7 @@ def main() -> int:
     parser.add_argument("resolved_ids", type=Path, help="Path to resolve_ids.py's resolved_ids.json")
     parser.add_argument("output", type=Path, help="Path to write the rendered reentry.toml")
     parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--allowed-reply-host", default="127.0.0.1")
     args = parser.parse_args()
 
     resolved = json.loads(args.resolved_ids.read_text())
@@ -71,6 +73,7 @@ def main() -> int:
             host=args.host,
             port=resolved["CI_LAB_CMD_UDP_PORT"],
             listen_port=resolved["TO_LAB_TLM_PORT"],
+            allowed_reply_host=args.allowed_reply_host,
             payload_hex=payload.hex(),
         )
     )
