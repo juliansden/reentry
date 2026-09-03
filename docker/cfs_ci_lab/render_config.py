@@ -26,6 +26,7 @@ TOML_TEMPLATE = """\
 kind = "udp"
 host = "{host}"
 port = {port}
+listen_port = {listen_port}
 probe_payload_hex = "{payload_hex}"
 
 [oracle]
@@ -59,7 +60,7 @@ def main() -> int:
     args = parser.parse_args()
 
     resolved = json.loads(args.resolved_ids.read_text())
-    missing = [k for k in ("CI_LAB_SEND_HK_MID", "CI_LAB_CMD_UDP_PORT") if k not in resolved]
+    missing = [k for k in ("CI_LAB_SEND_HK_MID", "CI_LAB_CMD_UDP_PORT", "TO_LAB_TLM_PORT") if k not in resolved]
     if missing:
         print(f"error: resolved_ids.json is missing {missing}", file=sys.stderr)
         return 1
@@ -69,6 +70,7 @@ def main() -> int:
         TOML_TEMPLATE.format(
             host=args.host,
             port=resolved["CI_LAB_CMD_UDP_PORT"],
+            listen_port=resolved["TO_LAB_TLM_PORT"],
             payload_hex=payload.hex(),
         )
     )

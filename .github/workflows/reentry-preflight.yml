@@ -51,7 +51,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: docker build -t cfs-ci-lab docker/cfs_ci_lab
-      - run: docker run -d --name cfs-ci-lab -p 1234:1234/udp cfs-ci-lab
+      - run: docker run -d --name cfs-ci-lab --privileged --sysctl fs.mqueue.msg_max=1024 --add-host=host.docker.internal:host-gateway -p 1234:1234/udp cfs-ci-lab
       - name: wait for cFE to boot
         run: |
           for i in $(seq 1 30); do
@@ -68,6 +68,10 @@ jobs:
           python docker/cfs_ci_lab/resolve_ids.py /tmp/generated_headers /tmp/resolved_ids.json
       - name: render reentry.toml from the resolved values
         run: python docker/cfs_ci_lab/render_config.py /tmp/resolved_ids.json /tmp/reentry.toml
+      - name: enable TO_LAB telemetry output and ci_lab HK subscription
+        run: |
+          HOST_IP=$(docker exec cfs-ci-lab getent ahostsv4 host.docker.internal | awk 'NR == 1 {print $1}')
+          python docker/cfs_ci_lab/enable_to_lab.py /tmp/resolved_ids.json --destination-ip "$HOST_IP"
       - run: reentry run --config /tmp/reentry.toml --json report.json --junit report.xml
       - uses: dorny/test-reporter@v2
         if: always()
