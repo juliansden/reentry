@@ -5,6 +5,7 @@ from docker.cfs_ci_lab.resolve_ids import find_resolved_defines, main
 from docker.cfs_ci_lab.enable_to_lab import build_add_packet, build_enable_packet
 from docker.cfs_ci_lab.render_config import build_hk_request_payload
 from reentry.oracle.ci_lab import parse_command_counters, parse_ingest_counters
+from reentry.oracle.base import Verdict
 
 
 def test_find_resolved_defines_reads_build_artifact(tmp_path):
@@ -87,3 +88,7 @@ def test_parse_ci_lab_counters_uses_payload_after_telemetry_header():
     packet = bytes.fromhex("0884c0020015000f462d824a00000000000000010300000000000000")
     assert parse_command_counters(packet) == (0, 0)
     assert parse_ingest_counters(packet) == (3, 0)
+
+
+def test_safe_drop_is_not_unsafe():
+    assert Verdict.SAFE_DROP.is_unsafe is False

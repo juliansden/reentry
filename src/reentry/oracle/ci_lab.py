@@ -75,7 +75,7 @@ class CiLabOracle(Oracle):
         if command_rejected:
             return Verdict.CLEAN_REJECT, "command-error counter incremented, target rejected the case"
         if ingest_rejected:
-            return Verdict.CLEAN_REJECT, "ingest-error counter incremented, target rejected the packet"
+            return Verdict.SAFE_DROP, "ingest-error counter incremented, target safely dropped the packet"
         if accepted:
             return Verdict.CLEAN_REJECT, "command-accept counter incremented, matching the expected outcome"
         return Verdict.INCONCLUSIVE, "target alive but neither counter changed"
