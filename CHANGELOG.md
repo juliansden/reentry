@@ -1,6 +1,22 @@
 # CHANGELOG
 
 
+## v0.1.3 (2026-09-03)
+
+### Bug Fixes
+
+- Add reachable oversized test case
+  ([`2e7a3f8`](https://github.com/juliansden/reentry/commit/2e7a3f87fdc56817b44b06fa3b70596c393f7036))
+
+- Reject oversized commands in mock target's well-formed check
+  ([`228948a`](https://github.com/juliansden/reentry/commit/228948acc7d3db33ea38a12b8f764aa65ec641ed))
+
+The well-behaved mock never checked overall packet size, so the new 4KB oversized_reachable test
+  case (structurally valid, no length lie) was accepted instead of rejected, causing an
+  unexpected_accept finding in CI. Add a MAX_COMMAND_SIZE bound mirroring a real target's finite
+  command buffer.
+
+
 ## v0.1.2 (2026-09-03)
 
 ### Bug Fixes
