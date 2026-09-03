@@ -88,7 +88,11 @@ sock.sendto(
 try:
     while True:
         reply, address = sock.recvfrom(65535)
-        if address[0] == transport["allowed_reply_host"]:
+        if (
+            address[0] == transport["allowed_reply_host"]
+            and len(reply) >= 6
+            and int.from_bytes(reply[0:2], "big") & 0x07FF == transport["allowed_reply_apid"]
+        ):
             parse_command_counters(reply)
             break
 finally:

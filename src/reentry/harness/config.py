@@ -14,6 +14,8 @@ class TransportConfig(BaseModel):
     port: int
     listen_port: int | None = None
     allowed_reply_host: str | None = None
+    allowed_reply_apid: int | None = None
+    target_apid: int | None = None
     probe_payload_hex: str = ""
 
     @property

@@ -11,6 +11,7 @@ from reentry.transport.base import Transport
 
 class Verdict(str, Enum):
     CLEAN_REJECT = "clean_reject"
+    SAFE_DROP = "safe_drop"
     CRASH = "crash"
     HANG = "hang"
     UNEXPECTED_ACCEPT = "unexpected_accept"

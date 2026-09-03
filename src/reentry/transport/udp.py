@@ -5,6 +5,7 @@ from __future__ import annotations
 import socket
 import time
 
+from reentry.ccsds.packet import PrimaryHeader
 from reentry.transport.base import Transport
 
 
@@ -23,10 +24,12 @@ class UDPTransport(Transport):
         listen_host: str = "0.0.0.0",
         listen_port: int | None = None,
         allowed_reply_host: str | None = None,
+        allowed_reply_apid: int | None = None,
     ) -> None:
         self._addr = (host, port)
         self._probe_payload = probe_payload
         self._allowed_reply_host = allowed_reply_host
+        self._allowed_reply_apid = allowed_reply_apid
         self._send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         if listen_port is not None:
             self._recv_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -53,8 +56,12 @@ class UDPTransport(Transport):
                 data, address = self._recv_sock.recvfrom(65535)
             except (TimeoutError, OSError):
                 return None
-            if self._allowed_reply_host is None or address[0] == self._allowed_reply_host:
-                return data
+            if self._allowed_reply_host is not None and address[0] != self._allowed_reply_host:
+                continue
+            if self._allowed_reply_apid is not None:
+                if len(data) < 6 or PrimaryHeader.unpack(data).apid != self._allowed_reply_apid:
+                    continue
+            return data
 
     def probe(self, timeout: float) -> bool:
         self._drain_stale_replies()

@@ -5,8 +5,8 @@ this only proves the harness's send/monitor/report pipeline works end to end, si
 hand-written mock is always more lenient and more predictable than a real target.
 
 Speaks a tiny subset of the ci_lab HK protocol: an HK-request payload of b"HK?" gets a
-reply packet with a 6-byte dummy primary header followed by (accept_count, error_count)
-as two uint8 counters, matching the layout `reentry.oracle.ci_lab` expects.
+reply packet with a cFS-compatible 16-byte telemetry header followed by the CI_LAB
+housekeeping payload, including command and ingest counters.
 """
 
 from __future__ import annotations
@@ -67,8 +67,14 @@ class MockTarget:
         while True:
             data, addr = self._sock.recvfrom(65535)
             if data == HK_REQUEST:
-                reply = bytes(PRIMARY_HEADER_SIZE) + struct.pack(
-                    ">BB", self._accept_count & 0xFF, self._error_count & 0xFF
+                reply = bytes(16) + struct.pack(
+                    "<BBBBII",
+                    self._accept_count & 0xFF,
+                    self._error_count & 0xFF,
+                    0,
+                    1,
+                    0,
+                    0,
                 )
                 self._sock.sendto(reply, addr)
                 continue
