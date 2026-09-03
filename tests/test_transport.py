@@ -54,3 +54,15 @@ def test_udp_transport_ignores_replies_from_unexpected_host():
     finally:
         sender.close()
         receiver.close()
+
+
+def test_udp_transport_accepts_replies_from_expected_host():
+    receiver = UDPTransport("127.0.0.1", 1, listen_port=0, allowed_reply_host="127.0.0.1")
+    port = receiver._recv_sock.getsockname()[1]
+    sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sender.sendto(b"expected", ("127.0.0.1", port))
+        assert receiver.receive(timeout=0.1) == b"expected"
+    finally:
+        sender.close()
+        receiver.close()
