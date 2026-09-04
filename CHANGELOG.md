@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v0.5.0 (2026-09-04)
+
+### Features
+
+- Preserve transport failure evidence
+  ([`ae5ac44`](https://github.com/juliansden/reentry/commit/ae5ac441c8d38b448f4480893049c5268f663a77))
+
+### Testing
+
+- Complete verdict integrity coverage
+  ([`707be9f`](https://github.com/juliansden/reentry/commit/707be9f334bbb5c5bfaa85159bddfcae8f760d87))
+
+
 ## v0.4.0 (2026-09-04)
 
 ### Bug Fixes
