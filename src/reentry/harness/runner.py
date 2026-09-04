@@ -68,8 +68,12 @@ def _select_cases(config: RunConfig) -> list[PacketCase]:
             if case.category != "secondary_header":
                 header.sec_hdr_flag = 1
             packet = header.pack() + case.packet_bytes[6:]
-            if case.checksum_valid and case.category != "secondary_header":
+            if case.category != "secondary_header":
                 packet = _with_command_checksum(packet)
+                if not case.checksum_valid and len(packet) >= 8:
+                    damaged = bytearray(packet)
+                    damaged[7] ^= 0x01
+                    packet = bytes(damaged)
             targeted.append(
                 PacketCase(
                     name=case.name,

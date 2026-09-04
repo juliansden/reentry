@@ -1,8 +1,8 @@
 """Deterministic boundary-value packet builders exercising CCSDS Space Packet edge cases.
 
 Each `build_*` function returns a list of `TestCase`. `generate_all()` aggregates them.
-All cases are constructed to be unambiguously invalid or degenerate, so a
-spec-conformant target is expected to reject every one of them cleanly.
+`build_known_good_noop_case` provides an acceptance control expected to be accepted
+cleanly, while all malformed boundary cases are expected to be rejected cleanly.
 """
 
 from __future__ import annotations

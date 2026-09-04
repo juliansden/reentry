@@ -103,7 +103,8 @@ then
     exit 1
 fi
 
-"$python_bin" -m reentry.cli run --config "$config" --json report.json --junit report.xml
+run_status=0
+"$python_bin" -m reentry.cli run --config "$config" --json report.json --junit report.xml || run_status=$?
 
 "$python_bin" - report.json <<'PY'
 import json
@@ -117,3 +118,5 @@ if len(known_good) != 1 or known_good[0]["verdict"] != "clean_accept" or "Comman
     sys.exit(1)
 print(known_good[0]["detail"])
 PY
+
+exit "$run_status"
