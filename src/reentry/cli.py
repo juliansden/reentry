@@ -30,6 +30,11 @@ def run(
     """Run the boundary-condition suite against a target and report findings."""
     run_config = RunConfig.from_toml(config)
     if profile is not None:
+        if run_config.include_categories is not None or run_config.exclude_categories:
+            raise typer.BadParameter(
+                "cannot be combined with include_categories or exclude_categories in the config",
+                param_hint="--profile",
+            )
         run_config = run_config.with_profile(profile)
     findings = Runner(run_config).run()
 

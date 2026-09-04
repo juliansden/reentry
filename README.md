@@ -2,8 +2,7 @@
 
 Reentry is a Python harness for CCSDS Space Packet conformance and robustness testing. It builds and validates Space Packets, generates deterministic malformed and boundary-value inputs, delivers them over UDP, and reports whether a target rejects them safely or becomes unresponsive or unexpectedly accepts them.
 
-See [ROADMAP.md](ROADMAP.md) for project direction, [CONTRIBUTING.md](CONTRIBUTING.md)
-for development guidance, and [SECURITY.md](SECURITY.md) for private vulnerability reporting.
+See [ROADMAP.md](ROADMAP.md) for project direction.
 
 ## Status
 
@@ -68,7 +67,7 @@ reentry run --config target.toml --profile smoke
 
 - `smoke` runs the known-good command control for fast valid-command and liveness checks.
 - `stock-cfs` runs the complete suite to characterize the target as shipped.
-- `hardened-cfs` runs the complete suite against stricter intended input-handling expectations.
+- `hardened-cfs` runs the complete suite while labeling the target's intended stricter policy.
 - `full-robustness` runs the complete malformed and boundary suite.
 
 Profiles do not alter observed oracle verdicts. JSON and JUnit reports record
