@@ -1,10 +1,12 @@
 import threading
+import struct
 
 from reentry.generator.cases import PacketCase
 from reentry.harness.config import OracleConfig, RunConfig, TransportConfig
 from reentry.harness.runner import Runner, _build_transport, _load_oracle, _select_cases
 from reentry.ccsds.packet import PrimaryHeader
 from reentry.oracle.base import Verdict
+from reentry.oracle.ci_lab import CiLabOracle
 from tests.fixtures.mock_target import MockTarget
 
 
@@ -76,6 +78,48 @@ def test_runner_against_buggy_mock_target_detects_crash():
     # v1 oracles can't distinguish a crashed process from a hung one over bare UDP;
     # both surface as HANG, which is what matters for CI gating (an unsafe finding).
     assert verdict.is_unsafe
+
+
+def test_ci_lab_oracle_preserves_before_telemetry_when_target_hangs_after_case():
+    counters = bytes(16) + struct.pack(">BBBB", 2, 0, 0, 1) + struct.pack("<II", 10, 0)
+
+    class HangingAfterCaseTransport:
+        def __init__(self):
+            self.replies = [counters, None]
+
+        def send(self, data: bytes) -> None:
+            pass
+
+        def receive(self, timeout: float) -> bytes | None:
+            return self.replies.pop(0)
+
+    oracle = CiLabOracle(hk_request_payload_hex="484b3f")
+    verdict, _detail = oracle.judge(
+        PacketCase("case", "command_malformed", b"packet", True),
+        HangingAfterCaseTransport(),
+    )
+
+    assert verdict == Verdict.HANG
+    assert oracle.last_evidence == {
+        "before": {
+            "command": 2,
+            "command_error": 0,
+            "enable_checksums": 0,
+            "socket_connected": 1,
+            "ingest_packets": 10,
+            "ingest_errors": 0,
+        },
+        "after": None,
+    }
+
+
+def test_run_config_timeout_is_the_default_for_builtin_oracles():
+    config = RunConfig(
+        transport=TransportConfig(host="127.0.0.1", port=1234),
+        timeout=0.4,
+    )
+
+    assert _load_oracle(config)._probe_timeout == 0.4
 
 
 def test_select_cases_retargets_to_valid_command_mid():
