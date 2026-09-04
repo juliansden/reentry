@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import importlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from reentry.ccsds.packet import PrimaryHeader
 from reentry.generator.boundary import generate_all
@@ -19,6 +19,7 @@ class Finding:
     case: PacketCase
     verdict: Verdict
     detail: str
+    evidence: dict = field(default_factory=dict)
 
 
 def _with_command_checksum(packet: bytes) -> bytes:
@@ -69,12 +70,18 @@ def _select_cases(config: RunConfig) -> list[PacketCase]:
             packet = header.pack() + case.packet_bytes[6:]
             if case.category != "secondary_header":
                 packet = _with_command_checksum(packet)
+                if not case.checksum_valid and len(packet) >= 8:
+                    damaged = bytearray(packet)
+                    damaged[7] ^= 0x01
+                    packet = bytes(damaged)
             targeted.append(
                 PacketCase(
                     name=case.name,
                     category=case.category,
                     packet_bytes=packet,
                     expect_safe_reject=case.expect_safe_reject,
+                    expect_accept=case.expect_accept,
+                    checksum_valid=case.checksum_valid,
                 )
             )
         cases = targeted
@@ -96,5 +103,12 @@ class Runner:
         with _build_transport(self._config) as transport:
             for case in cases:
                 verdict, detail = oracle.judge(case, transport)
-                findings.append(Finding(case=case, verdict=verdict, detail=detail))
+                findings.append(
+                    Finding(
+                        case=case,
+                        verdict=verdict,
+                        detail=detail,
+                        evidence=getattr(oracle, "last_evidence", {}),
+                    )
+                )
         return findings

@@ -6,7 +6,7 @@ from docker.cfs_ci_lab.resolve_ids import find_resolved_defines, main
 from docker.cfs_ci_lab.render_config import main as render_config_main
 from docker.cfs_ci_lab.enable_to_lab import build_add_packet, build_enable_packet
 from docker.cfs_ci_lab.render_config import build_hk_request_payload
-from reentry.oracle.ci_lab import parse_command_counters, parse_ingest_counters
+from reentry.oracle.ci_lab import parse_command_counters, parse_hk_counters, parse_ingest_counters
 from reentry.oracle.base import Verdict
 
 
@@ -90,6 +90,7 @@ def test_parse_ci_lab_counters_uses_payload_after_telemetry_header():
     packet = bytes(16) + struct.pack("<BBBBII", 0, 0, 0, 1, 3, 0)
     assert parse_command_counters(packet) == (0, 0)
     assert parse_ingest_counters(packet) == (3, 0)
+    assert parse_hk_counters(packet).socket_connected == 1
 
 
 def test_render_config_main_reports_missing_required_ids(tmp_path, monkeypatch, capsys):
@@ -107,3 +108,7 @@ def test_render_config_main_reports_missing_required_ids(tmp_path, monkeypatch, 
 
 def test_safe_drop_is_not_unsafe():
     assert Verdict.SAFE_DROP.is_unsafe is False
+
+
+def test_clean_accept_is_not_unsafe():
+    assert Verdict.CLEAN_ACCEPT.is_unsafe is False

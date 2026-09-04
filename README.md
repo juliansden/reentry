@@ -68,6 +68,21 @@ set `REENTRY_PORT` if that port is busy:
 REENTRY_PORT=1235 scripts/run-local.sh
 ```
 
+Run only the known-good CI_LAB NOOP against a target by adding this to a TOML
+configuration (use the build-resolved `target_apid` for real cFS):
+
+```toml
+include_categories = ["known_good"]
+```
+
+The run must report `clean_accept` and a detail showing `CommandCounter`
+increased. The full suite keeps malformed cases separate: `clean_reject`,
+`safe_drop`, and `inconclusive` are non-unsafe outcomes; only hangs, crashes,
+and unexpected accepts fail the CLI run.
+
+`IngestPackets` is included as diagnostic evidence, but its delta also includes
+the HK probes used to read telemetry, so it is not used alone to claim rejection.
+
 Run the intentionally faulty mock target to verify unsafe-result detection:
 
 ```sh
@@ -79,6 +94,16 @@ Run the real cFS/ci_lab target in Docker with the complete setup and cleanup flo
 ```sh
 scripts/run-cfs-docker.sh
 ```
+
+The Docker workflow runs the complete suite and explicitly verifies that the
+known-good NOOP reports `clean_accept` with a `CommandCounter` increase before
+cleanup. It also writes `report.json` and `report.xml`; malformed cases that
+remain `inconclusive` are recorded there without failing the run by themselves.
+The command-level malformed suite also checks checksum handling. If cFS reports
+`EnableChecksums = 0`, the deliberately bad-checksum command is expected to be
+accepted and is correctly reported as `unexpected_accept`. The stock cFS v7.0.1
+CI_LAB build has no runtime command to enable checksum validation; a clean
+rejection for this case requires a custom cFS/EDS target build.
 
 Docker must be running, and host UDP port `1234` must be available. The script
 fails immediately if the port is busy, instead of continuing with a stopped

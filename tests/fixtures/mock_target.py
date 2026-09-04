@@ -47,12 +47,19 @@ class MockTarget:
             return False
         header = PrimaryHeader.unpack(data)
         payload_len = len(data) - PRIMARY_HEADER_SIZE
+        checksum = 0xFF
+        for value in data:
+            checksum ^= value
         return (
             header.version == 0
+            and header.packet_type == 1
             and header.seq_flags == 0b11
             and header.data_length == payload_len
             and header.apid == self.EXPECTED_APID
-            and header.sec_hdr_flag == 0
+            and header.sec_hdr_flag == 1
+            and len(data) >= 8
+            and data[6] == 0
+            and checksum == 0
         )
 
     def _handle_command(self, data: bytes) -> None:

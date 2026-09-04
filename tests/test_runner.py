@@ -4,6 +4,7 @@ from reentry.generator.cases import PacketCase
 from reentry.harness.config import OracleConfig, RunConfig, TransportConfig
 from reentry.harness.runner import Runner, _build_transport, _load_oracle, _select_cases
 from reentry.ccsds.packet import PrimaryHeader
+from reentry.oracle.base import Verdict
 from tests.fixtures.mock_target import MockTarget
 
 
@@ -30,6 +31,31 @@ def test_runner_against_well_behaved_mock_target_has_no_unsafe_findings():
     findings = Runner(_config(port)).run()
     unsafe = [f for f in findings if f.verdict.is_unsafe]
     assert unsafe == []
+
+
+def test_runner_known_good_noop_is_clean_accept_and_increments_counter():
+    port = _start_target(buggy=False)
+    config = _config(port, include_categories=["known_good"])
+    findings = Runner(config).run()
+
+    assert len(findings) == 1
+    assert findings[0].case.name == "ci_lab_noop"
+    assert findings[0].verdict == Verdict.CLEAN_ACCEPT
+    assert "CommandCounter increased" in findings[0].detail
+    assert findings[0].evidence["before"]["command"] == 0
+    assert findings[0].evidence["after"]["command"] == 1
+
+
+def test_runner_command_malformed_cases_are_separate_and_safe():
+    port = _start_target(buggy=False)
+    findings = Runner(_config(port, include_categories=["command_malformed"])).run()
+
+    assert {finding.case.name for finding in findings} == {
+        "command_bad_checksum",
+        "command_invalid_function",
+        "command_wrong_length",
+    }
+    assert all(finding.verdict == Verdict.CLEAN_REJECT for finding in findings)
 
 
 def test_runner_against_buggy_mock_target_detects_crash():
@@ -64,10 +90,21 @@ def test_select_cases_retargets_to_valid_command_mid():
         assert header.apid == target_apid
         assert header.packet_type == 1
         assert header.sec_hdr_flag == 1
-        checksum = 0xFF
-        for value in case.packet_bytes:
-            checksum ^= value
-        assert checksum == 0
+        if case.checksum_valid:
+            checksum = 0xFF
+            for value in case.packet_bytes:
+                checksum ^= value
+            assert checksum == 0
+
+
+def test_select_cases_preserves_bad_command_checksum():
+    config = RunConfig(transport=TransportConfig(host="127.0.0.1", port=1234, target_apid=0x84))
+    case = next(case for case in _select_cases(config) if case.name == "command_bad_checksum")
+    checksum = 0xFF
+    for value in case.packet_bytes:
+        checksum ^= value
+    assert case.checksum_valid is False
+    assert checksum != 0
 
 
 def test_select_cases_preserves_secondary_header_flag_cases():
