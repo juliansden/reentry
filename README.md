@@ -101,9 +101,9 @@ cleanup. It also writes `report.json` and `report.xml`; malformed cases that
 remain `inconclusive` are recorded there without failing the run by themselves.
 The command-level malformed suite also checks checksum handling. If cFS reports
 `EnableChecksums = 0`, the deliberately bad-checksum command is expected to be
-accepted and is correctly reported as `unexpected_accept`; enable checksum
-validation in the cFS target configuration before treating that case as a clean
-rejection criterion.
+accepted and is correctly reported as `unexpected_accept`. The stock cFS v7.0.1
+CI_LAB build has no runtime command to enable checksum validation; a clean
+rejection for this case requires a custom cFS/EDS target build.
 
 Docker must be running, and host UDP port `1234` must be available. The script
 fails immediately if the port is busy, instead of continuing with a stopped
