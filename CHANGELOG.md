@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.3.0 (2026-09-04)
+
+### Features
+
+- Add CI lab known-good and malformed commands
+  ([`029d37a`](https://github.com/juliansden/reentry/commit/029d37a5d55b5796ca83ebccc9f8585d259f3277))
+
+
 ## v0.2.0 (2026-09-03)
 
 ### Bug Fixes
