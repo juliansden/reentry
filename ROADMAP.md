@@ -31,23 +31,48 @@ unsafe-verdict gate for now.
 
 ## Phase 3: Target Portability and Evidence
 
-### Known Issues to Fix
+### P0: Verdict Integrity
 
-- [ ] Record UDP delivery failures such as `EMSGSIZE` as transport evidence so an undelivered packet cannot be attributed to target behavior.
-- [ ] Distinguish local socket or network failures from target `HANG` findings.
-- [ ] Correlate or drain telemetry replies so stale packets cannot be used as a case's before/after evidence.
-- [ ] Add an external health signal to distinguish `CRASH` from `HANG` when the target becomes unresponsive.
+- [x] Replace swallowed UDP send errors with structured transport evidence, including errno, operation, packet size, and destination.
+- [x] Distinguish local socket or network failures from target `HANG` findings and define whether they produce a dedicated non-unsafe verdict or `INCONCLUSIVE` with a transport status.
+- [x] Correlate or drain telemetry replies before each request so stale packets cannot be used as a case's before/after evidence.
+- [x] Replace the mutable `oracle.last_evidence` side channel with a structured oracle result containing verdict, detail, evidence, and transport status.
+- [x] Add focused failure-path tests for `EMSGSIZE`, socket errors, timeouts, stale replies, and partial before/after evidence.
+
+### P1: Configuration and Adapter Contracts
+
+- [ ] Validate configuration values before execution, including hex payloads, ports, APIDs, timeouts, transport kinds, and case categories.
+- [ ] Return actionable CLI errors for invalid TOML and Pydantic configuration instead of raw exceptions.
+- [ ] Add target adapters and documented telemetry schemas.
+- [ ] Define adapter capabilities, telemetry schema/version, required evidence fields, and verdict mapping.
 - [ ] Add target capabilities and evidence signals needed for `hardened-cfs` to enforce stricter expectations without making unsupported claims.
-- [ ] Validate configuration values before execution, including hex payloads, ports, APIDs, timeouts, and case categories.
+- [ ] Define profile-specific evidence and verdict requirements where targets expose the needed signals.
+
+### P2: Target Health and Regression Evidence
+
+- [ ] Add an external health signal to distinguish `CRASH` from `HANG` when the target becomes unresponsive.
 - [ ] Establish real-target baselines and automated or scheduled cFS regression coverage beyond manual workflow dispatch.
+- [ ] Add report provenance: harness version, target build/version, resolved identifiers, configuration hash, adapter, and telemetry schema.
+- [ ] Add regression baselines and CI-friendly comparison tooling.
+- [ ] Replace fixed CI startup sleeps with readiness checks and fail the workflow when target boot readiness is not reached.
+
+### P3: Protocol and Transport Expansion
+
 - [ ] Extend protocol coverage beyond the current primary-header and ci_lab command focus, including additional CCSDS behavior and transports.
-
-### Planned Work
-
-- [ ] Add target adapters and documented telemetry schemas
-- [ ] Define profile-specific evidence requirements where targets expose the needed signals
-- [ ] Add regression baselines and CI-friendly comparison tooling
 - [ ] Extend CCSDS packet and transport coverage
+
+The `stock-cfs`, `hardened-cfs`, and `full-robustness` profiles currently share
+the complete generated suite. Until target capabilities and stronger evidence
+are available, `hardened-cfs` is a documented policy label rather than a stricter
+enforcement mode.
+
+### Required Test Coverage
+
+- [x] Test transport errors and confirm they cannot become unsafe target verdicts.
+- [ ] Test invalid hex, port, APID, timeout, transport, and category configuration values.
+- [x] Test stale and delayed telemetry replies, including source and schema filtering.
+- [x] Test structured evidence preservation for before-only, after-only, and transport-failure cases.
+- [ ] Test report provenance and baseline comparison behavior.
 
 ## Phase 4: Advanced Robustness
 

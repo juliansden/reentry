@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from reentry.generator.cases import PacketCase
-from reentry.oracle.base import Oracle, Verdict
+from reentry.oracle.base import Oracle, OracleResult, Verdict
 from reentry.transport.base import Transport
 
 
@@ -18,8 +18,26 @@ class LivenessOracle(Oracle):
     def __init__(self, probe_timeout: float = 2.0) -> None:
         self._probe_timeout = probe_timeout
 
-    def judge(self, case: PacketCase, transport: Transport) -> tuple[Verdict, str]:
+    def judge(self, case: PacketCase, transport: Transport) -> OracleResult:
         transport.send(case.packet_bytes)
+        if transport.last_error is not None:
+            return OracleResult(
+                Verdict.INCONCLUSIVE,
+                "transport failed while sending the case",
+                transport_error=transport.last_error,
+            )
         if transport.probe(self._probe_timeout):
-            return Verdict.INCONCLUSIVE, "target responded to liveness probe after the case"
-        return Verdict.HANG, "no response to liveness probe within timeout (possible hang/crash)"
+            return OracleResult(
+                Verdict.INCONCLUSIVE,
+                "target responded to liveness probe after the case",
+            )
+        if transport.last_error is not None:
+            return OracleResult(
+                Verdict.INCONCLUSIVE,
+                "transport failed while probing target liveness",
+                transport_error=transport.last_error,
+            )
+        return OracleResult(
+            Verdict.HANG,
+            "no response to liveness probe within timeout (possible hang/crash)",
+        )

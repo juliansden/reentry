@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from enum import Enum
 
 from reentry.generator.cases import PacketCase
-from reentry.transport.base import Transport
+from reentry.transport.base import Transport, TransportError
 
 
 class Verdict(str, Enum):
@@ -23,9 +24,17 @@ class Verdict(str, Enum):
         return self in (Verdict.CRASH, Verdict.HANG, Verdict.UNEXPECTED_ACCEPT)
 
 
+@dataclass(frozen=True)
+class OracleResult:
+    verdict: Verdict
+    detail: str
+    evidence: dict = field(default_factory=dict)
+    transport_error: TransportError | None = None
+
+
 class Oracle(ABC):
     """Judges the outcome of sending one `TestCase` to a target via `Transport`."""
 
     @abstractmethod
-    def judge(self, case: PacketCase, transport: Transport) -> tuple[Verdict, str]:
-        """Send/observe as needed and return (verdict, human-readable detail)."""
+    def judge(self, case: PacketCase, transport: Transport) -> OracleResult:
+        """Send/observe as needed and return a structured result."""

@@ -30,6 +30,7 @@ def test_json_report_identifies_known_good_acceptance():
             "expect_safe_reject": False,
             "expect_accept": True,
             "evidence": {},
+            "transport_error": None,
         }
     ]
     assert report["profile"] is None

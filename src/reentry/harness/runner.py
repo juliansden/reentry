@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+from dataclasses import asdict
 from dataclasses import dataclass, field
 
 from reentry.ccsds.packet import PrimaryHeader
@@ -10,7 +11,7 @@ from reentry.generator.boundary import generate_all
 from reentry.generator.cases import PacketCase
 from reentry.harness.config import RunConfig
 from reentry.harness.profiles import categories_for_profile
-from reentry.oracle.base import Oracle, Verdict
+from reentry.oracle.base import Oracle, OracleResult, Verdict
 from reentry.transport.base import Transport
 from reentry.transport.udp import UDPTransport
 
@@ -21,6 +22,7 @@ class Finding:
     verdict: Verdict
     detail: str
     evidence: dict = field(default_factory=dict)
+    transport_error: dict | None = None
 
 
 def _with_command_checksum(packet: bytes) -> bytes:
@@ -112,13 +114,18 @@ class Runner:
         findings: list[Finding] = []
         with _build_transport(self._config) as transport:
             for case in cases:
-                verdict, detail = oracle.judge(case, transport)
+                result: OracleResult = oracle.judge(case, transport)
                 findings.append(
                     Finding(
                         case=case,
-                        verdict=verdict,
-                        detail=detail,
-                        evidence=getattr(oracle, "last_evidence", {}),
+                        verdict=result.verdict,
+                        detail=result.detail,
+                        evidence=result.evidence,
+                        transport_error=(
+                            asdict(result.transport_error)
+                            if result.transport_error is not None
+                            else None
+                        ),
                     )
                 )
         return findings

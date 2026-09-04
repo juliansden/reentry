@@ -3,10 +3,25 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class TransportError:
+    """Structured evidence for a failed transport operation."""
+
+    operation: str
+    error_type: str
+    message: str
+    errno: int | None = None
+    packet_length: int | None = None
+    destination: tuple[str, int] | None = None
 
 
 class Transport(ABC):
     """Abstract delivery mechanism for sending packet bytes to a target."""
+
+    last_error: TransportError | None = None
 
     @abstractmethod
     def send(self, data: bytes) -> None:
@@ -19,6 +34,9 @@ class Transport(ABC):
     def probe(self, timeout: float) -> bool:
         """Convenience liveness check: True if any reply arrives within timeout."""
         return self.receive(timeout) is not None
+
+    def drain_stale_replies(self) -> None:
+        """Discard replies already queued before a new request."""
 
     @abstractmethod
     def close(self) -> None:

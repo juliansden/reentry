@@ -74,10 +74,10 @@ def test_runner_against_buggy_mock_target_detects_crash():
         expect_safe_reject=True,
     )
     with _build_transport(config) as transport:
-        verdict, _detail = oracle.judge(case, transport)
+        result = oracle.judge(case, transport)
     # v1 oracles can't distinguish a crashed process from a hung one over bare UDP;
     # both surface as HANG, which is what matters for CI gating (an unsafe finding).
-    assert verdict.is_unsafe
+    assert result.verdict.is_unsafe
 
 
 def test_ci_lab_oracle_preserves_before_telemetry_when_target_hangs_after_case():
@@ -94,13 +94,13 @@ def test_ci_lab_oracle_preserves_before_telemetry_when_target_hangs_after_case()
             return self.replies.pop(0)
 
     oracle = CiLabOracle(hk_request_payload_hex="484b3f")
-    verdict, _detail = oracle.judge(
+    result = oracle.judge(
         PacketCase("case", "command_malformed", b"packet", True),
         HangingAfterCaseTransport(),
     )
 
-    assert verdict == Verdict.HANG
-    assert oracle.last_evidence == {
+    assert result.verdict == Verdict.HANG
+    assert result.evidence == {
         "before": {
             "command": 2,
             "command_error": 0,
@@ -111,6 +111,75 @@ def test_ci_lab_oracle_preserves_before_telemetry_when_target_hangs_after_case()
         },
         "after": None,
     }
+
+
+def test_ci_lab_oracle_classifies_case_send_failure_as_inconclusive():
+    counters = bytes(16) + struct.pack(">BBBB", 2, 0, 0, 1) + struct.pack("<II", 10, 0)
+
+    class FailedCaseTransport:
+        last_error = None
+
+        def __init__(self):
+            self.replies = [counters]
+            self.send_count = 0
+
+        def drain_stale_replies(self):
+            pass
+
+        def send(self, data: bytes) -> None:
+            self.send_count += 1
+            if self.send_count == 2:
+                from reentry.transport.base import TransportError
+
+                self.last_error = TransportError(
+                    operation="send",
+                    error_type="OSError",
+                    message="message too long",
+                    errno=90,
+                    packet_length=len(data),
+                    destination=("127.0.0.1", 1234),
+                )
+
+        def receive(self, timeout: float) -> bytes | None:
+            return self.replies.pop(0) if self.replies else None
+
+    result = CiLabOracle(hk_request_payload_hex="484b3f").judge(
+        PacketCase("case", "oversized", b"packet", True),
+        FailedCaseTransport(),
+    )
+
+    assert result.verdict == Verdict.INCONCLUSIVE
+    assert result.evidence["before"]["command"] == 2
+    assert result.evidence["after"] is None
+    assert result.transport_error.errno == 90
+
+
+def test_ci_lab_oracle_drains_replies_before_each_hk_request():
+    counters = bytes(16) + struct.pack(">BBBB", 2, 0, 0, 1) + struct.pack("<II", 10, 0)
+
+    class DrainingTransport:
+        last_error = None
+
+        def __init__(self):
+            self.replies = [counters, counters]
+            self.drain_count = 0
+
+        def drain_stale_replies(self):
+            self.drain_count += 1
+
+        def send(self, data: bytes) -> None:
+            pass
+
+        def receive(self, timeout: float) -> bytes | None:
+            return self.replies.pop(0)
+
+    transport = DrainingTransport()
+    result = CiLabOracle(hk_request_payload_hex="484b3f").judge(
+        PacketCase("case", "command_malformed", b"packet", True), transport
+    )
+
+    assert result.verdict == Verdict.INCONCLUSIVE
+    assert transport.drain_count == 2
 
 
 def test_run_config_timeout_is_the_default_for_builtin_oracles():

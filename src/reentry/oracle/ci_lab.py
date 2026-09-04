@@ -12,8 +12,8 @@ import struct
 from dataclasses import asdict, dataclass
 
 from reentry.generator.cases import PacketCase
-from reentry.oracle.base import Oracle, Verdict
-from reentry.transport.base import Transport
+from reentry.oracle.base import Oracle, OracleResult, Verdict
+from reentry.transport.base import Transport, TransportError
 
 # Offsets within the ci_lab HK telemetry packet (v7.0.1).
 # The 16-octet cFS telemetry header precedes the CI_LAB payload.
@@ -72,59 +72,110 @@ class CiLabOracle(Oracle):
     def __init__(self, hk_request_payload_hex: str, probe_timeout: float = 2.0) -> None:
         self._hk_request_payload = bytes.fromhex(hk_request_payload_hex)
         self._probe_timeout = probe_timeout
-        self.last_evidence: dict = {}
 
-    def _read_counters(self, transport: Transport) -> CiLabCounters | None:
+    def _read_counters(
+        self, transport: Transport
+    ) -> tuple[CiLabCounters | None, TransportError | None]:
+        drain = getattr(transport, "drain_stale_replies", None)
+        if drain is not None:
+            drain()
         transport.send(self._hk_request_payload)
+        transport_error = getattr(transport, "last_error", None)
+        if transport_error is not None:
+            return None, transport_error
         reply = transport.receive(self._probe_timeout)
         if reply is None:
-            return None
-        return parse_hk_counters(reply)
+            return None, getattr(transport, "last_error", None)
+        return parse_hk_counters(reply), None
 
-    def judge(self, case: PacketCase, transport: Transport) -> tuple[Verdict, str]:
-        self.last_evidence = {"before": None, "after": None}
-        before = self._read_counters(transport)
+    def judge(self, case: PacketCase, transport: Transport) -> OracleResult:
+        evidence = {"before": None, "after": None}
+        before, transport_error = self._read_counters(transport)
         if before is None:
-            return Verdict.HANG, "no HK reply before sending case (target already unresponsive)"
+            if transport_error is not None:
+                return OracleResult(
+                    Verdict.INCONCLUSIVE,
+                    "transport failed while reading HK counters before the case",
+                    evidence,
+                    transport_error,
+                )
+            return OracleResult(
+                Verdict.HANG,
+                "no HK reply before sending case (target already unresponsive)",
+                evidence,
+            )
 
-        self.last_evidence["before"] = asdict(before)
+        evidence["before"] = asdict(before)
 
         transport.send(case.packet_bytes)
+        transport_error = getattr(transport, "last_error", None)
+        if transport_error is not None:
+            return OracleResult(
+                Verdict.INCONCLUSIVE,
+                "transport failed while sending the case",
+                evidence,
+                transport_error,
+            )
 
-        after = self._read_counters(transport)
+        after, transport_error = self._read_counters(transport)
         if after is None:
-            return Verdict.HANG, "no HK reply after sending case (possible hang/crash)"
+            if transport_error is not None:
+                return OracleResult(
+                    Verdict.INCONCLUSIVE,
+                    "transport failed while reading HK counters after the case",
+                    evidence,
+                    transport_error,
+                )
+            return OracleResult(
+                Verdict.HANG,
+                "no HK reply after sending case (possible hang/crash)",
+                evidence,
+            )
 
-        self.last_evidence["after"] = asdict(after)
+        evidence["after"] = asdict(after)
 
         accepted = after.command != before.command
         command_rejected = after.command_error != before.command_error
         ingest_rejected = after.ingest_errors != before.ingest_errors
         if accepted and case.expect_safe_reject:
-            return Verdict.UNEXPECTED_ACCEPT, "command-accept counter incremented for a case expected to be rejected"
+            return OracleResult(
+                Verdict.UNEXPECTED_ACCEPT,
+                "command-accept counter incremented for a case expected to be rejected",
+                evidence,
+            )
         if command_rejected:
-            return Verdict.CLEAN_REJECT, (
+            return OracleResult(
+                Verdict.CLEAN_REJECT,
                 f"command-error counter incremented from {before.command_error} to {after.command_error}, "
-                "target rejected the case"
+                "target rejected the case",
+                evidence,
             )
         if ingest_rejected:
-            return Verdict.SAFE_DROP, (
+            return OracleResult(
+                Verdict.SAFE_DROP,
                 f"ingest-error counter incremented from {before.ingest_errors} to {after.ingest_errors}, "
-                "target safely dropped the packet"
+                "target safely dropped the packet",
+                evidence,
             )
         if accepted:
             outcome = "known-good command accepted" if case.expect_accept else "command accepted"
-            return Verdict.CLEAN_ACCEPT, (
+            return OracleResult(
+                Verdict.CLEAN_ACCEPT,
                 f"CommandCounter increased from {before.command} to {after.command}, "
-                f"target {outcome}"
+                f"target {outcome}",
+                evidence,
             )
         if after.ingest_packets != before.ingest_packets:
-            return Verdict.INCONCLUSIVE, (
+            return OracleResult(
+                Verdict.INCONCLUSIVE,
                 f"target alive; IngestPackets changed from {before.ingest_packets} to "
                 f"{after.ingest_packets} (delta includes the HK probe), but "
-                "CommandCounter and CommandErrorCounter did not change"
+                "CommandCounter and CommandErrorCounter did not change",
+                evidence,
             )
-        return Verdict.INCONCLUSIVE, (
+        return OracleResult(
+            Verdict.INCONCLUSIVE,
             "target alive but IngestPackets, CommandCounter, CommandErrorCounter, and "
-            "IngestErrors did not change"
+            "IngestErrors did not change",
+            evidence,
         )
