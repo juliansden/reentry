@@ -82,10 +82,12 @@ class CiLabOracle(Oracle):
         return parse_hk_counters(reply)
 
     def judge(self, case: PacketCase, transport: Transport) -> tuple[Verdict, str]:
-        self.last_evidence = {}
+        self.last_evidence = {"before": None, "after": None}
         before = self._read_counters(transport)
         if before is None:
             return Verdict.HANG, "no HK reply before sending case (target already unresponsive)"
+
+        self.last_evidence["before"] = asdict(before)
 
         transport.send(case.packet_bytes)
 
@@ -93,7 +95,7 @@ class CiLabOracle(Oracle):
         if after is None:
             return Verdict.HANG, "no HK reply after sending case (possible hang/crash)"
 
-        self.last_evidence = {"before": asdict(before), "after": asdict(after)}
+        self.last_evidence["after"] = asdict(after)
 
         accepted = after.command != before.command
         command_rejected = after.command_error != before.command_error

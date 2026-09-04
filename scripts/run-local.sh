@@ -10,6 +10,7 @@ if [[ ! -x "$python_bin" ]]; then
 fi
 
 port="${REENTRY_PORT:-1234}"
+profile="${REENTRY_PROFILE:-full-robustness}"
 target_args=(--port "$port")
 if [[ "${1:-}" == "--buggy" ]]; then
     target_args+=(--buggy)
@@ -60,4 +61,4 @@ if [[ "$ready" -ne 1 ]]; then
     exit 1
 fi
 
-"$python_bin" -m reentry.cli run --config "$config" --json report.json --junit report.xml
+"$python_bin" -m reentry.cli run --config "$config" --profile "$profile" --json report.json --junit report.xml

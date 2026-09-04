@@ -34,13 +34,19 @@ jobs:
         run: |
           python tests/fixtures/mock_target.py --port 1234 &
           sleep 1
-          reentry run --config tests/fixtures/mock_target.toml --json report.json --junit report.xml
+          reentry run --config tests/fixtures/mock_target.toml --profile full-robustness --json report.json --junit report.xml
       - uses: dorny/test-reporter@v2
         if: always()
         with:
           name: reentry findings (mock target)
           path: report.xml
           reporter: java-junit
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reentry evidence (mock target)
+          path: report.json
+          if-no-files-found: warn
 
   cfs_ci_lab-preflight:
     # Heavier real-target run: build & boot the actual cFS/ci_lab sandbox.
@@ -74,13 +80,19 @@ jobs:
         run: |
           HOST_IP=$(docker exec cfs-ci-lab getent ahostsv4 host.docker.internal | awk 'NR == 1 {print $1}')
           python docker/cfs_ci_lab/enable_to_lab.py /tmp/resolved_ids.json --destination-ip "$HOST_IP"
-      - run: reentry run --config /tmp/reentry.toml --json report.json --junit report.xml
+      - run: reentry run --config /tmp/reentry.toml --profile full-robustness --json report.json --junit report.xml
       - uses: dorny/test-reporter@v2
         if: always()
         with:
           name: reentry findings (real ci_lab)
           path: report.xml
           reporter: java-junit
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reentry evidence (real ci_lab)
+          path: report.json
+          if-no-files-found: warn
       - name: stop and remove the sandbox container
         if: always()
         run: docker rm -f cfs-ci-lab

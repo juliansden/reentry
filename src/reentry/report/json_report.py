@@ -5,12 +5,14 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 
+from reentry.harness.profiles import TargetProfile
 from reentry.harness.runner import Finding
 
 
-def to_json(findings: list[Finding]) -> str:
+def to_json(findings: list[Finding], profile: TargetProfile | None = None) -> str:
     payload = {
         "generated_at": datetime.now(UTC).isoformat(),
+        "profile": profile.value if profile is not None else None,
         "findings": [
             {
                 "name": f.case.name,

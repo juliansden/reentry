@@ -5,7 +5,9 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
+
+from reentry.harness.profiles import TargetProfile
 
 
 class TransportConfig(BaseModel):
@@ -32,9 +34,26 @@ class OracleConfig(BaseModel):
 class RunConfig(BaseModel):
     transport: TransportConfig
     oracle: OracleConfig = OracleConfig()
+    profile: TargetProfile | None = None
     include_categories: list[str] | None = None
     exclude_categories: list[str] = []
     timeout: float = 2.0
+
+    @model_validator(mode="after")
+    def validate_profile_filters(self) -> "RunConfig":
+        if self.profile is not None and (
+            self.include_categories is not None or self.exclude_categories
+        ):
+            raise ValueError(
+                "profile cannot be combined with include_categories or exclude_categories"
+            )
+        return self
+
+    def with_profile(self, profile: TargetProfile) -> "RunConfig":
+        """Return this configuration with a CLI-selected profile applied."""
+        data = self.model_dump()
+        data["profile"] = profile
+        return type(self).model_validate(data)
 
     @classmethod
     def from_toml(cls, path: str | Path) -> "RunConfig":

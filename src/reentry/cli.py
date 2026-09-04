@@ -8,6 +8,7 @@ import typer
 
 from reentry.generator.boundary import generate_all
 from reentry.harness.config import RunConfig
+from reentry.harness.profiles import TargetProfile
 from reentry.harness.runner import Runner
 from reentry.report.json_report import to_json
 from reentry.report.junit_report import to_junit_xml
@@ -18,22 +19,30 @@ app = typer.Typer(add_completion=False)
 @app.command()
 def run(
     config: Path = typer.Option(..., "--config", exists=True, help="Path to a RunConfig TOML file"),
+    profile: TargetProfile | None = typer.Option(
+        None,
+        "--profile",
+        help="Named target profile; cannot be combined with category filters in the config",
+    ),
     json_out: Path | None = typer.Option(None, "--json", help="Write JSON report to this path"),
     junit_out: Path | None = typer.Option(None, "--junit", help="Write JUnit XML report to this path"),
 ) -> None:
     """Run the boundary-condition suite against a target and report findings."""
     run_config = RunConfig.from_toml(config)
+    if profile is not None:
+        run_config = run_config.with_profile(profile)
     findings = Runner(run_config).run()
 
     if json_out is not None:
-        json_out.write_text(to_json(findings))
+        json_out.write_text(to_json(findings, profile=run_config.profile))
     if junit_out is not None:
-        junit_out.write_text(to_junit_xml(findings))
+        junit_out.write_text(to_junit_xml(findings, profile=run_config.profile))
 
     unsafe = [f for f in findings if f.verdict.is_unsafe]
     for f in unsafe:
         typer.echo(f"[{f.verdict.value}] {f.case.name}: {f.detail}", err=True)
-    typer.echo(f"{len(findings)} cases run, {len(unsafe)} unsafe findings")
+    profile_summary = f" [{run_config.profile.value}]" if run_config.profile else ""
+    typer.echo(f"{len(findings)} cases run, {len(unsafe)} unsafe findings{profile_summary}")
 
     raise typer.Exit(code=1 if unsafe else 0)
 

@@ -2,6 +2,9 @@
 
 Reentry is a Python harness for CCSDS Space Packet conformance and robustness testing. It builds and validates Space Packets, generates deterministic malformed and boundary-value inputs, delivers them over UDP, and reports whether a target rejects them safely or becomes unresponsive or unexpectedly accepts them.
 
+See [ROADMAP.md](ROADMAP.md) for project direction, [CONTRIBUTING.md](CONTRIBUTING.md)
+for development guidance, and [SECURITY.md](SECURITY.md) for private vulnerability reporting.
+
 ## Status
 
 The current implementation targets CCSDS Space Packets and provides:
@@ -55,11 +58,32 @@ List the deterministic cases:
 reentry list-cases
 ```
 
+## Target Profiles
+
+Select a named, reproducible profile with `--profile`:
+
+```sh
+reentry run --config target.toml --profile smoke
+```
+
+- `smoke` runs the known-good command control for fast valid-command and liveness checks.
+- `stock-cfs` runs the complete suite to characterize the target as shipped.
+- `hardened-cfs` runs the complete suite against stricter intended input-handling expectations.
+- `full-robustness` runs the complete malformed and boundary suite.
+
+Profiles do not alter observed oracle verdicts. JSON and JUnit reports record
+the selected profile, verdict, detail, and per-case telemetry evidence.
+`INCONCLUSIVE` remains inconclusive; `UNEXPECTED_ACCEPT`, `HANG`, and `CRASH`
+fail the run.
+
 Run against the local mock target:
 
 ```sh
 scripts/run-local.sh
 ```
+
+Set `REENTRY_PROFILE=smoke` for the fast profile or leave the default
+`full-robustness` profile in place.
 
 The script stops the mock target when the run finishes. It uses UDP port `1234`;
 set `REENTRY_PORT` if that port is busy:
@@ -94,6 +118,9 @@ Run the real cFS/ci_lab target in Docker with the complete setup and cleanup flo
 ```sh
 scripts/run-cfs-docker.sh
 ```
+
+The Docker helper uses `full-robustness` by default; set `REENTRY_PROFILE` to
+select another named profile.
 
 The Docker workflow runs the complete suite and explicitly verifies that the
 known-good NOOP reports `clean_accept` with a `CommandCounter` increase before

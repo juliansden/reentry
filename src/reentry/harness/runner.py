@@ -9,6 +9,7 @@ from reentry.ccsds.packet import PrimaryHeader
 from reentry.generator.boundary import generate_all
 from reentry.generator.cases import PacketCase
 from reentry.harness.config import RunConfig
+from reentry.harness.profiles import categories_for_profile
 from reentry.oracle.base import Oracle, Verdict
 from reentry.transport.base import Transport
 from reentry.transport.udp import UDPTransport
@@ -37,7 +38,13 @@ def _with_command_checksum(packet: bytes) -> bytes:
 def _load_oracle(config: RunConfig) -> Oracle:
     module_path, _, class_name = config.oracle.plugin.rpartition(".")
     oracle_cls = getattr(importlib.import_module(module_path), class_name)
-    return oracle_cls(**config.oracle.args)
+    args = dict(config.oracle.args)
+    if config.oracle.plugin in {
+        "reentry.oracle.liveness.LivenessOracle",
+        "reentry.oracle.ci_lab.CiLabOracle",
+    }:
+        args.setdefault("probe_timeout", config.timeout)
+    return oracle_cls(**args)
 
 
 def _build_transport(config: RunConfig) -> Transport:
@@ -85,8 +92,11 @@ def _select_cases(config: RunConfig) -> list[PacketCase]:
                 )
             )
         cases = targeted
-    if config.include_categories is not None:
-        cases = [c for c in cases if c.category in config.include_categories]
+    include_categories = config.include_categories
+    if config.profile is not None:
+        include_categories = categories_for_profile(config.profile)
+    if include_categories is not None:
+        cases = [c for c in cases if c.category in include_categories]
     if config.exclude_categories:
         cases = [c for c in cases if c.category not in config.exclude_categories]
     return cases

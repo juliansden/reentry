@@ -10,6 +10,7 @@ if [[ ! -x "$python_bin" ]]; then
 fi
 
 container_name="${REENTRY_CONTAINER:-cfs-ci-lab}"
+profile="${REENTRY_PROFILE:-full-robustness}"
 headers_dir="$(mktemp -d)"
 resolved_ids="$(mktemp)"
 config="$(mktemp)"
@@ -104,7 +105,7 @@ then
 fi
 
 run_status=0
-"$python_bin" -m reentry.cli run --config "$config" --json report.json --junit report.xml || run_status=$?
+"$python_bin" -m reentry.cli run --config "$config" --profile "$profile" --json report.json --junit report.xml || run_status=$?
 
 "$python_bin" - report.json <<'PY'
 import json
