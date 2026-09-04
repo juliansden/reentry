@@ -70,7 +70,9 @@ def test_run_rejects_unknown_profile(tmp_path):
     result = CliRunner().invoke(app, ["run", "--config", str(config), "--profile", "unknown"])
 
     assert result.exit_code == 2
-    assert "Invalid value for '--profile'" in result.output
+    assert "Invalid value" in result.output
+    assert "unknown" in result.output
+    assert "stock-cfs" in result.output
 
 
 def test_run_rejects_profile_with_config_category_filters(tmp_path):
@@ -87,6 +89,6 @@ port = 1234
     result = CliRunner().invoke(app, ["run", "--config", str(config), "--profile", "smoke"])
 
     assert result.exit_code == 2
-    assert "Invalid value for --profile" in result.output
+    assert "Invalid value" in result.output
     assert "cannot be combined with include_categories" in result.output
     assert "exclude_categories in the config" in result.output
