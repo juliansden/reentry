@@ -1,6 +1,26 @@
 # CHANGELOG
 
 
+## v0.4.0 (2026-09-04)
+
+### Bug Fixes
+
+- Address PR review feedback
+  ([`a3c4f20`](https://github.com/juliansden/reentry/commit/a3c4f20cb2f004e78af0fd8006f721e3bffa24bd))
+
+Co-authored-by: juliansden <66048332+juliansden@users.noreply.github.com>
+
+### Features
+
+- Add reproducible target profiles
+  ([`2b47eb3`](https://github.com/juliansden/reentry/commit/2b47eb3f0d4081cc64191c89246647c32cc471b6))
+
+### Testing
+
+- Tolerate styled CLI validation output
+  ([`826691d`](https://github.com/juliansden/reentry/commit/826691dd830bee567a5b360bce8a62fb13f09b12))
+
+
 ## v0.3.0 (2026-09-04)
 
 ### Features
