@@ -154,6 +154,34 @@ def test_ci_lab_oracle_classifies_case_send_failure_as_inconclusive():
     assert result.transport_error.errno == 90
 
 
+def test_ci_lab_oracle_drains_replies_before_each_hk_request():
+    counters = bytes(16) + struct.pack(">BBBB", 2, 0, 0, 1) + struct.pack("<II", 10, 0)
+
+    class DrainingTransport:
+        last_error = None
+
+        def __init__(self):
+            self.replies = [counters, counters]
+            self.drain_count = 0
+
+        def drain_stale_replies(self):
+            self.drain_count += 1
+
+        def send(self, data: bytes) -> None:
+            pass
+
+        def receive(self, timeout: float) -> bytes | None:
+            return self.replies.pop(0)
+
+    transport = DrainingTransport()
+    result = CiLabOracle(hk_request_payload_hex="484b3f").judge(
+        PacketCase("case", "command_malformed", b"packet", True), transport
+    )
+
+    assert result.verdict == Verdict.INCONCLUSIVE
+    assert transport.drain_count == 2
+
+
 def test_run_config_timeout_is_the_default_for_builtin_oracles():
     config = RunConfig(
         transport=TransportConfig(host="127.0.0.1", port=1234),

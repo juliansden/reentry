@@ -33,11 +33,11 @@ unsafe-verdict gate for now.
 
 ### P0: Verdict Integrity
 
-- [ ] Replace swallowed UDP send errors with structured transport evidence, including errno, operation, packet size, and destination.
-- [ ] Distinguish local socket or network failures from target `HANG` findings and define whether they produce a dedicated non-unsafe verdict or `INCONCLUSIVE` with a transport status.
-- [ ] Correlate or drain telemetry replies before each request so stale packets cannot be used as a case's before/after evidence.
-- [ ] Replace the mutable `oracle.last_evidence` side channel with a structured oracle result containing verdict, detail, evidence, and transport status.
-- [ ] Add focused failure-path tests for `EMSGSIZE`, socket errors, timeouts, stale replies, and partial before/after evidence.
+- [x] Replace swallowed UDP send errors with structured transport evidence, including errno, operation, packet size, and destination.
+- [x] Distinguish local socket or network failures from target `HANG` findings and define whether they produce a dedicated non-unsafe verdict or `INCONCLUSIVE` with a transport status.
+- [x] Correlate or drain telemetry replies before each request so stale packets cannot be used as a case's before/after evidence.
+- [x] Replace the mutable `oracle.last_evidence` side channel with a structured oracle result containing verdict, detail, evidence, and transport status.
+- [x] Add focused failure-path tests for `EMSGSIZE`, socket errors, timeouts, stale replies, and partial before/after evidence.
 
 ### P1: Configuration and Adapter Contracts
 
@@ -68,10 +68,10 @@ enforcement mode.
 
 ### Required Test Coverage
 
-- [ ] Test transport errors and confirm they cannot become unsafe target verdicts.
+- [x] Test transport errors and confirm they cannot become unsafe target verdicts.
 - [ ] Test invalid hex, port, APID, timeout, transport, and category configuration values.
-- [ ] Test stale and delayed telemetry replies, including source and schema filtering.
-- [ ] Test structured evidence preservation for before-only, after-only, and transport-failure cases.
+- [x] Test stale and delayed telemetry replies, including source and schema filtering.
+- [x] Test structured evidence preservation for before-only, after-only, and transport-failure cases.
 - [ ] Test report provenance and baseline comparison behavior.
 
 ## Phase 4: Advanced Robustness

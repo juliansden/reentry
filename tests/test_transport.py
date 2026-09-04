@@ -55,6 +55,30 @@ def test_udp_transport_records_send_error():
         transport.close()
 
 
+def test_udp_transport_records_receive_error():
+    transport = UDPTransport("127.0.0.1", 1234)
+
+    class FailingSocket:
+        def settimeout(self, timeout):
+            pass
+
+        def recvfrom(self, size):
+            raise OSError(101, "network unreachable")
+
+        def close(self):
+            pass
+
+    transport._recv_sock.close()
+    transport._recv_sock = FailingSocket()
+    try:
+        assert transport.receive(0.1) is None
+        assert transport.last_error is not None
+        assert transport.last_error.operation == "receive"
+        assert transport.last_error.errno == 101
+    finally:
+        transport.close()
+
+
 def test_udp_transport_receive_returns_raw_bytes(mock_target):
     transport = UDPTransport("127.0.0.1", mock_target)
     try:
