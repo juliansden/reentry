@@ -22,6 +22,7 @@ def to_json(findings: list[Finding], profile: TargetProfile | None = None) -> st
                 "expect_safe_reject": f.case.expect_safe_reject,
                 "expect_accept": f.case.expect_accept,
                 "evidence": f.evidence,
+                "transport_error": f.transport_error,
             }
             for f in findings
         ],

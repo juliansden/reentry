@@ -6,7 +6,7 @@ import socket
 import time
 
 from reentry.ccsds.packet import PrimaryHeader
-from reentry.transport.base import Transport
+from reentry.transport.base import Transport, TransportError
 
 
 class UDPTransport(Transport):
@@ -27,6 +27,7 @@ class UDPTransport(Transport):
         allowed_reply_apid: int | None = None,
     ) -> None:
         self._addr = (host, port)
+        self.last_error = None
         self._probe_payload = probe_payload
         self._allowed_reply_host = allowed_reply_host
         self._allowed_reply_apid = allowed_reply_apid
@@ -38,14 +39,21 @@ class UDPTransport(Transport):
             self._recv_sock = self._send_sock
 
     def send(self, data: bytes) -> None:
+        self.last_error = None
         try:
             self._send_sock.sendto(data, self._addr)
-        except OSError:
-            # e.g. EMSGSIZE: the datagram exceeds what UDP can carry on the wire at all.
-            # That's itself a legitimate (if degenerate) test outcome, not a transport bug.
-            pass
+        except OSError as error:
+            self.last_error = TransportError(
+                operation="send",
+                error_type=type(error).__name__,
+                message=str(error),
+                errno=error.errno,
+                packet_length=len(data),
+                destination=self._addr,
+            )
 
     def receive(self, timeout: float) -> bytes | None:
+        self.last_error = None
         deadline = time.monotonic() + timeout
         while True:
             remaining = deadline - time.monotonic()
@@ -54,7 +62,15 @@ class UDPTransport(Transport):
             self._recv_sock.settimeout(remaining)
             try:
                 data, address = self._recv_sock.recvfrom(65535)
-            except (TimeoutError, OSError):
+            except TimeoutError:
+                return None
+            except OSError as error:
+                self.last_error = TransportError(
+                    operation="receive",
+                    error_type=type(error).__name__,
+                    message=str(error),
+                    errno=error.errno,
+                )
                 return None
             if self._allowed_reply_host is not None and address[0] != self._allowed_reply_host:
                 continue
@@ -64,11 +80,13 @@ class UDPTransport(Transport):
             return data
 
     def probe(self, timeout: float) -> bool:
-        self._drain_stale_replies()
+        self.drain_stale_replies()
         self.send(self._probe_payload)
+        if self.last_error is not None:
+            return False
         return self.receive(timeout) is not None
 
-    def _drain_stale_replies(self) -> None:
+    def drain_stale_replies(self) -> None:
         self._recv_sock.settimeout(0)
         try:
             while True:

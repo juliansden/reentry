@@ -33,6 +33,7 @@ def to_junit_xml(findings: list[Finding], profile: TargetProfile | None = None) 
                 "verdict": f.verdict.value,
                 "detail": f.detail,
                 "evidence": f.evidence,
+                "transport_error": f.transport_error,
             },
             sort_keys=True,
         )
