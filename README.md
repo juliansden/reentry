@@ -17,6 +17,28 @@ The current implementation targets CCSDS Space Packets and provides:
 - A local mock target for fast development
 - A Docker build for the cFS/ci_lab validation target
 
+## Architecture
+
+```mermaid
+flowchart TD
+    CLI["reentry run"] --> CONFIG["RunConfig<br/>TOML validation"]
+    CONFIG --> PROFILE["Target profile"]
+    PROFILE --> RUNNER["Runner"]
+    RUNNER --> CASES["Boundary case generator"]
+    CASES --> PACKETS["PacketCase bytes"]
+    PACKETS --> UDP["UDPTransport"]
+    UDP --> TARGET["Target under test"]
+    TARGET --> OBSERVE["Liveness reply<br/>or telemetry"]
+    OBSERVE --> ORACLE["Oracle"]
+    ORACLE --> LIVE["LivenessOracle"]
+    ORACLE --> CILAB["CiLabOracle<br/>counter deltas"]
+    LIVE --> RESULT["OracleResult"]
+    CILAB --> RESULT
+    RESULT --> FINDING["Finding"]
+    FINDING --> JSON["JSON report"]
+    FINDING --> JUNIT["JUnit XML report"]
+```
+
 The cFS/ci_lab integration is a separate, heavier validation path. Its generated message IDs are resolved from the actual cFS build rather than guessed.
 
 For a local cFS run, build and start the image with Docker Desktop, then use the
