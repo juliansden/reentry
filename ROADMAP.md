@@ -41,12 +41,12 @@ unsafe-verdict gate for now.
 
 ### P1: Configuration and Adapter Contracts
 
-- [ ] Validate configuration values before execution, including hex payloads, ports, APIDs, timeouts, transport kinds, and case categories.
-- [ ] Return actionable CLI errors for invalid TOML and Pydantic configuration instead of raw exceptions.
-- [ ] Add target adapters and documented telemetry schemas.
-- [ ] Define adapter capabilities, telemetry schema/version, required evidence fields, and verdict mapping.
-- [ ] Add target capabilities and evidence signals needed for `hardened-cfs` to enforce stricter expectations without making unsupported claims.
-- [ ] Define profile-specific evidence and verdict requirements where targets expose the needed signals.
+- [x] Validate configuration values before execution, including hex payloads, ports, APIDs, timeouts, transport kinds, and case categories.
+- [x] Return actionable CLI errors for invalid TOML and Pydantic configuration instead of raw exceptions.
+- [x] Add target adapters and documented telemetry schemas.
+- [x] Define adapter capabilities, telemetry schema/version, required evidence fields, and verdict mapping.
+- [x] Add target capabilities and evidence signals needed for `hardened-cfs` to enforce stricter expectations without making unsupported claims.
+- [x] Define profile-specific evidence and verdict requirements where targets expose the needed signals.
 
 ### P2: Target Health and Regression Evidence
 
@@ -61,15 +61,15 @@ unsafe-verdict gate for now.
 - [ ] Extend protocol coverage beyond the current primary-header and ci_lab command focus, including additional CCSDS behavior and transports.
 - [ ] Extend CCSDS packet and transport coverage
 
-The `stock-cfs`, `hardened-cfs`, and `full-robustness` profiles currently share
-the complete generated suite. Until target capabilities and stronger evidence
-are available, `hardened-cfs` is a documented policy label rather than a stricter
-enforcement mode.
+The `stock-cfs`, `hardened-cfs`, and `full-robustness` profiles select the same
+generated suite. `hardened-cfs` additionally requires an adapter capability and
+profile evidence contract; current adapters reject it until those target signals
+are available.
 
 ### Required Test Coverage
 
 - [x] Test transport errors and confirm they cannot become unsafe target verdicts.
-- [ ] Test invalid hex, port, APID, timeout, transport, and category configuration values.
+- [x] Test invalid hex, port, APID, timeout, transport, and category configuration values.
 - [x] Test stale and delayed telemetry replies, including source and schema filtering.
 - [x] Test structured evidence preservation for before-only, after-only, and transport-failure cases.
 - [ ] Test report provenance and baseline comparison behavior.

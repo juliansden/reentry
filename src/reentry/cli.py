@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+import tomllib
 
+from pydantic import ValidationError
 import typer
 
 from reentry.generator.boundary import generate_all
@@ -14,6 +16,14 @@ from reentry.report.json_report import to_json
 from reentry.report.junit_report import to_junit_xml
 
 app = typer.Typer(add_completion=False)
+
+
+def _config_error_message(config: Path, error: ValidationError) -> str:
+    details = "; ".join(
+        f"{'.'.join(str(part) for part in item['loc'])}: {item['msg']}"
+        for item in error.errors()
+    )
+    return f"invalid configuration {config}: {details}"
 
 
 @app.command()
@@ -28,7 +38,20 @@ def run(
     junit_out: Path | None = typer.Option(None, "--junit", help="Write JUnit XML report to this path"),
 ) -> None:
     """Run the boundary-condition suite against a target and report findings."""
-    run_config = RunConfig.from_toml(config)
+    try:
+        run_config = RunConfig.from_toml(config)
+    except ValidationError as error:
+        raise typer.BadParameter(
+            _config_error_message(config, error), param_hint="--config"
+        ) from error
+    except tomllib.TOMLDecodeError as error:
+        raise typer.BadParameter(
+            f"invalid TOML in {config}: {error}", param_hint="--config"
+        ) from error
+    except OSError as error:
+        raise typer.BadParameter(
+            f"cannot read config {config}: {error}", param_hint="--config"
+        ) from error
     if profile is not None:
         if run_config.include_categories is not None or run_config.exclude_categories:
             raise typer.BadParameter(
@@ -36,7 +59,10 @@ def run(
                 param_hint="--profile",
             )
         run_config = run_config.with_profile(profile)
-    findings = Runner(run_config).run()
+    try:
+        findings = Runner(run_config).run()
+    except ValueError as error:
+        raise typer.BadParameter(str(error), param_hint="--config or --profile") from error
 
     if json_out is not None:
         json_out.write_text(to_json(findings, profile=run_config.profile))
