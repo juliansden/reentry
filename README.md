@@ -53,49 +53,34 @@ Flight software must remain resilient against corrupted or malformed Space Packe
 
 ## Architecture
 
-The following diagram illustrates how Reentry orchestrates packet generation, target delivery, telemetry observation, oracle evaluation, and report emission:
+The diagram below illustrates the end-to-end execution flow of Reentry:
 
 ```mermaid
-flowchart LR
-    subgraph INPUT["Run definition"]
-        CLI["CLI: reentry run"] --> CONFIG["RunConfig<br/>TOML and Pydantic validation"]
-        CONFIG --> PROFILE["TargetProfile<br/>case selection"]
+flowchart TD
+    subgraph STEP1["1. Configuration & Profile"]
+        CONF["<b>Run Config & Profile</b><br/>TOML validation & case selection"]
     end
 
-    subgraph EXECUTION["Test execution"]
-        RUNNER["Runner"] --> GENERATOR["Boundary-case generator<br/>generate_all()"]
-        GENERATOR --> CASE["PacketCase<br/>expected outcome + raw bytes"]
-        CASE --> RETARGET["Optional APID retargeting<br/>checksum preservation"]
-        RETARGET --> TRANSPORT["Transport interface<br/>UDPTransport"]
+    subgraph STEP2["2. Packet Generation"]
+        PGEN["<b>Boundary Generator</b><br/>Constructs valid, malformed & boundary Space Packets"]
     end
 
-    subgraph OBSERVATION["Target observation"]
-        TARGET["System under test<br/>mock target or cFS/ci_lab"]
-        REPLY["Reply or timeout"]
-        TELEMETRY["Telemetry evidence<br/>before/after counters"]
-        ORACLE["Oracle implementation"]
-        VERDICT["OracleResult<br/>verdict + evidence + transport status"]
-        TARGET --> REPLY
-        TARGET --> TELEMETRY
-        REPLY --> ORACLE
-        TELEMETRY --> ORACLE
-        ORACLE --> VERDICT
+    subgraph STEP3["3. Execution & Target Observation"]
+        UDP["<b>UDP Transport</b><br/>Delivers packets to target"]
+        TARGET["<b>System Under Test</b><br/>Mock Target or NASA cFS (ci_lab)"]
+        ORACLE["<b>Telemetry Oracle</b><br/>Monitors liveness & counter deltas<br/><i>(clean_accept, clean_reject, safe_drop, hang, crash)</i>"]
+        
+        UDP --> TARGET
+        TARGET <--> ORACLE
     end
 
-    subgraph OUTPUT["Reports and CI results"]
-        FINDING["Finding<br/>case + verdict + detail"]
-        JSON["JSON report"]
-        JUNIT["JUnit XML report"]
-        FINDING --> JSON
-        FINDING --> JUNIT
+    subgraph STEP4["4. Reporting & Provenance"]
+        RPT["<b>JSON & JUnit XML Reports</b><br/>Includes config hash, telemetry schema & verdict findings"]
     end
 
-    PROFILE --> RUNNER
-    RUNNER --> TRANSPORT
-    TRANSPORT --> TARGET
-    ORACLE -.-> LIVE["LivenessOracle<br/>health only"]
-    ORACLE -.-> CILAB["CiLabOracle<br/>counter deltas"]
-    VERDICT --> FINDING
+    CONF --> PGEN
+    PGEN --> UDP
+    ORACLE --> RPT
 ```
 
 ---
