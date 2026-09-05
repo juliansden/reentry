@@ -54,7 +54,7 @@ unsafe-verdict gate for now.
 - [x] Establish real-target baselines and automated or scheduled cFS regression coverage beyond manual workflow dispatch.
 - [x] Add report provenance: harness version, target build/version, resolved identifiers, configuration hash, adapter, and telemetry schema.
 - [x] Add regression baselines and CI-friendly comparison tooling.
-- [ ] Replace fixed CI startup sleeps with readiness checks and fail the workflow when target boot readiness is not reached.
+- [x] Replace fixed CI startup sleeps with readiness checks and fail the workflow when target boot readiness is not reached.
 
 ### P3: Protocol and Transport Expansion
 

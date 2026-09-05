@@ -62,10 +62,23 @@ jobs:
       - run: docker run -d --name cfs-ci-lab --privileged --sysctl fs.mqueue.msg_max=1024 --add-host=host.docker.internal:host-gateway -p 127.0.0.1:1234:1234/udp cfs-ci-lab
       - name: wait for cFE to boot
         run: |
-          for _ in $(seq 1 30); do
-            docker logs cfs-ci-lab 2>&1 | grep -q "CFE_ES_Main" && break
+          ready=0
+          for _ in $(seq 1 60); do
+            if ! docker inspect -f '{{.State.Running}}' cfs-ci-lab 2>/dev/null | grep -q '^true$'; then
+              echo "cFS container stopped before becoming operational." >&2
+              exit 1
+            fi
+            if docker logs cfs-ci-lab 2>&1 | grep -q "CFE_ES_Main entering OPERATIONAL state"; then
+              ready=1
+              break
+            fi
             sleep 1
           done
+          if [ "$ready" -ne 1 ]; then
+            echo "cFS did not reach operational state in time." >&2
+            docker logs cfs-ci-lab >&2 || true
+            exit 1
+          fi
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
