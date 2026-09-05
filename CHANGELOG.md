@@ -1,6 +1,22 @@
 # CHANGELOG
 
 
+## v0.7.1 (2026-09-05)
+
+### Bug Fixes
+
+- Use standard Trove classifier in pyproject.toml
+  ([`62215bb`](https://github.com/juliansden/reentry/commit/62215bb9c27e7b765409b1ac0634622d09d86756))
+
+### Documentation
+
+- Simplify architecture Mermaid diagram in README
+  ([`5ce92ca`](https://github.com/juliansden/reentry/commit/5ce92cade568bc33f1baec3b86467f005af7ca90))
+
+- Update README and switch license to Apache 2.0
+  ([`0515cbb`](https://github.com/juliansden/reentry/commit/0515cbb8b2c38c85ed291c38b954a3f3a56036f8))
+
+
 ## v0.7.0 (2026-09-05)
 
 ### Continuous Integration
