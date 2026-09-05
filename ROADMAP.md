@@ -45,8 +45,8 @@ unsafe-verdict gate for now.
 - [x] Return actionable CLI errors for invalid TOML and Pydantic configuration instead of raw exceptions.
 - [x] Add target adapters and documented telemetry schemas.
 - [x] Define adapter capabilities, telemetry schema/version, required evidence fields, and verdict mapping.
-- [ ] Add target capabilities and evidence signals needed for `hardened-cfs` to enforce stricter expectations without making unsupported claims.
-- [ ] Define profile-specific evidence and verdict requirements where targets expose the needed signals.
+- [x] Add target capabilities and evidence signals needed for `hardened-cfs` to enforce stricter expectations without making unsupported claims.
+- [x] Define profile-specific evidence and verdict requirements where targets expose the needed signals.
 
 ### P2: Target Health and Regression Evidence
 
@@ -61,10 +61,10 @@ unsafe-verdict gate for now.
 - [ ] Extend protocol coverage beyond the current primary-header and ci_lab command focus, including additional CCSDS behavior and transports.
 - [ ] Extend CCSDS packet and transport coverage
 
-The `stock-cfs`, `hardened-cfs`, and `full-robustness` profiles currently share
-the complete generated suite. Until target capabilities and stronger evidence
-are available, `hardened-cfs` is a documented policy label rather than a stricter
-enforcement mode.
+The `stock-cfs`, `hardened-cfs`, and `full-robustness` profiles select the same
+generated suite. `hardened-cfs` additionally requires an adapter capability and
+profile evidence contract; current adapters reject it until those target signals
+are available.
 
 ### Required Test Coverage
 

@@ -191,6 +191,18 @@ def test_run_config_timeout_is_the_default_for_builtin_oracles():
     assert _load_oracle(config)._probe_timeout == 0.4
 
 
+def test_hardened_profile_requires_adapter_capability():
+    config = _config(1234)
+    config = config.with_profile("hardened-cfs")
+
+    try:
+        _load_oracle(config)
+    except ValueError as error:
+        assert "enforces_hardened_policy" in str(error)
+    else:
+        raise AssertionError("hardened profile should require an enforcement capability")
+
+
 def test_select_cases_retargets_to_valid_command_mid():
     target_apid = 0x84
     config = RunConfig(transport=TransportConfig(host="127.0.0.1", port=1234, target_apid=target_apid))

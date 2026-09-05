@@ -36,6 +36,36 @@ class AdapterContract:
     required_evidence_fields: tuple[str, ...]
     verdict_mapping: tuple[tuple[str, Verdict], ...]
     supported_profiles: tuple[str, ...]
+    profile_evidence_fields: tuple[tuple[str, tuple[str, ...]], ...] = ()
+    profile_verdicts: tuple[tuple[str, tuple[Verdict, ...]], ...] = ()
+
+    def requirements_for(self, profile: str) -> tuple[str, ...]:
+        """Return capability or evidence requirements for a named profile."""
+        if profile == "hardened-cfs":
+            requirements = ["enforces_hardened_policy"]
+            if not self.capabilities.reports_command_outcome:
+                requirements.append("reports_command_outcome")
+            evidence = self.evidence_fields_for(profile)
+            if not evidence:
+                requirements.append("profile evidence")
+            return tuple(requirements)
+        if profile not in self.supported_profiles:
+            return (f"supports profile {profile!r}",)
+        return ()
+
+    def evidence_fields_for(self, profile: str) -> tuple[str, ...]:
+        return dict(self.profile_evidence_fields).get(profile, self.required_evidence_fields)
+
+    def verdicts_for(self, profile: str) -> tuple[Verdict, ...]:
+        return dict(self.profile_verdicts).get(profile, tuple(Verdict))
+
+    def validate_profile(self, profile: str) -> None:
+        missing = self.requirements_for(profile)
+        if missing:
+            raise ValueError(
+                f"adapter {self.name!r} cannot run profile {profile!r}; "
+                f"missing {', '.join(missing)}"
+            )
 
     def verdict_for(self, signal: str) -> Verdict | None:
         return dict(self.verdict_mapping).get(signal)
@@ -58,6 +88,9 @@ LIVENESS_CONTRACT = AdapterContract(
         ("health_response", Verdict.INCONCLUSIVE),
     ),
     supported_profiles=("smoke", "stock-cfs", "hardened-cfs", "full-robustness"),
+    profile_verdicts=(
+        ("smoke", (Verdict.INCONCLUSIVE, Verdict.HANG)),
+    ),
 )
 
 
@@ -89,4 +122,13 @@ CI_LAB_CONTRACT = AdapterContract(
         ("transport_failure", Verdict.INCONCLUSIVE),
     ),
     supported_profiles=("smoke", "stock-cfs", "hardened-cfs", "full-robustness"),
+    profile_evidence_fields=(
+        ("hardened-cfs", ("before", "after")),
+    ),
+    profile_verdicts=(
+        (
+            "hardened-cfs",
+            (Verdict.CLEAN_REJECT, Verdict.SAFE_DROP, Verdict.HANG, Verdict.INCONCLUSIVE),
+        ),
+    ),
 )

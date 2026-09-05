@@ -34,3 +34,24 @@ def test_contract_reports_missing_evidence_without_requiring_partial_hang_eviden
     assert CI_LAB_CONTRACT.missing_evidence({"before": {}}) == ("after",)
     assert CI_LAB_CONTRACT.missing_evidence({"before": {}, "after": {}}) == ()
     assert LIVENESS_CONTRACT.missing_evidence({}) == ()
+
+
+def test_hardened_profile_declares_required_evidence_and_verdicts():
+    assert CI_LAB_CONTRACT.evidence_fields_for("hardened-cfs") == ("before", "after")
+    assert CI_LAB_CONTRACT.verdicts_for("hardened-cfs") == (
+        Verdict.CLEAN_REJECT,
+        Verdict.SAFE_DROP,
+        Verdict.HANG,
+        Verdict.INCONCLUSIVE,
+    )
+    assert CI_LAB_CONTRACT.requirements_for("hardened-cfs") == (
+        "enforces_hardened_policy",
+    )
+
+
+def test_hardened_profile_rejects_adapters_without_required_capabilities():
+    assert LIVENESS_CONTRACT.requirements_for("hardened-cfs") == (
+        "enforces_hardened_policy",
+        "reports_command_outcome",
+        "profile evidence",
+    )

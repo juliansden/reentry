@@ -59,7 +59,10 @@ def run(
                 param_hint="--profile",
             )
         run_config = run_config.with_profile(profile)
-    findings = Runner(run_config).run()
+    try:
+        findings = Runner(run_config).run()
+    except ValueError as error:
+        raise typer.BadParameter(str(error), param_hint="--config or --profile") from error
 
     if json_out is not None:
         json_out.write_text(to_json(findings, profile=run_config.profile))

@@ -122,3 +122,14 @@ def test_run_reports_invalid_toml_without_traceback(tmp_path):
     assert "invalid TOML" in result.output
     assert config.name in result.output
     assert "Traceback" not in result.output
+
+
+def test_run_rejects_hardened_profile_without_adapter_capability(tmp_path):
+    config = tmp_path / "reentry.toml"
+    _write_config(config)
+
+    result = CliRunner().invoke(app, ["run", "--config", str(config), "--profile", "hardened-cfs"])
+
+    assert result.exit_code == 2
+    assert "enforces_hardened_policy" in result.output
+    assert "Traceback" not in result.output

@@ -67,7 +67,9 @@ reentry run --config target.toml --profile smoke
 
 - `smoke` runs the known-good command control for fast valid-command and liveness checks.
 - `stock-cfs` runs the complete suite to characterize the target as shipped.
-- `hardened-cfs` runs the complete suite while labeling the target's intended stricter policy.
+- `hardened-cfs` requires an adapter that reports hardened-policy enforcement and
+	the required before/after evidence; current adapters reject this profile rather
+	than making an unsupported claim.
 
 Profiles do not alter observed oracle verdicts. JSON and JUnit reports record
 the selected profile, verdict, detail, and per-case telemetry evidence.
@@ -91,8 +93,8 @@ the version `7.0.1` `ci_lab_housekeeping` schema with these fields:
 The cFS adapter maps command-error deltas to `clean_reject`, ingest-error
 deltas to `safe_drop`, command deltas to `clean_accept`, missing after-telemetry
 to `hang`, and transport failures to `inconclusive`. Neither current adapter
-claims hardened-policy enforcement; `hardened-cfs` remains a policy label until
-the target exposes a reliable enforcement signal.
+claims hardened-policy enforcement. The runner rejects `hardened-cfs` until the
+target exposes a reliable enforcement signal.
 
 Run against the local mock target:
 

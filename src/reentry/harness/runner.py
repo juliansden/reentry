@@ -46,7 +46,12 @@ def _load_oracle(config: RunConfig) -> Oracle:
         "reentry.oracle.ci_lab.CiLabOracle",
     }:
         args.setdefault("probe_timeout", config.timeout)
-    return oracle_cls(**args)
+    oracle = oracle_cls(**args)
+    profile = config.profile
+    contract = getattr(oracle, "adapter_contract", None)
+    if profile is not None and contract is not None:
+        contract.validate_profile(profile.value)
+    return oracle
 
 
 def _build_transport(config: RunConfig) -> Transport:
