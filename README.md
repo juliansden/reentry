@@ -68,8 +68,8 @@ reentry run --config target.toml --profile smoke
 - `smoke` runs the known-good command control for fast valid-command and liveness checks.
 - `stock-cfs` runs the complete suite to characterize the target as shipped.
 - `hardened-cfs` requires an adapter that reports hardened-policy enforcement and
-	the required before/after evidence; current adapters reject this profile rather
-	than making an unsupported claim.
+    the required before/after evidence; current adapters reject this profile rather
+    than making an unsupported claim.
 
 Profiles do not alter observed oracle verdicts. JSON and JUnit reports record
 the selected profile, verdict, detail, and per-case telemetry evidence.
