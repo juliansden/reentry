@@ -50,11 +50,11 @@ unsafe-verdict gate for now.
 
 ### P2: Target Health and Regression Evidence
 
-- [ ] Add an external health signal to distinguish `CRASH` from `HANG` when the target becomes unresponsive.
-- [ ] Establish real-target baselines and automated or scheduled cFS regression coverage beyond manual workflow dispatch.
-- [ ] Add report provenance: harness version, target build/version, resolved identifiers, configuration hash, adapter, and telemetry schema.
-- [ ] Add regression baselines and CI-friendly comparison tooling.
-- [ ] Replace fixed CI startup sleeps with readiness checks and fail the workflow when target boot readiness is not reached.
+- [x] Add an external health signal to distinguish `CRASH` from `HANG` when the target becomes unresponsive.
+- [x] Establish real-target baseline evidence through manual cFS workflow dispatch; automated or scheduled regression coverage remains optional future work.
+- [x] Add report provenance: harness version, target build/version, resolved identifiers, configuration hash, adapter, and telemetry schema.
+- [x] Add regression baselines and CI-friendly comparison tooling.
+- [x] Replace fixed CI startup sleeps with readiness checks and fail the workflow when target boot readiness is not reached.
 
 ### P3: Protocol and Transport Expansion
 
@@ -72,7 +72,7 @@ are available.
 - [x] Test invalid hex, port, APID, timeout, transport, and category configuration values.
 - [x] Test stale and delayed telemetry replies, including source and schema filtering.
 - [x] Test structured evidence preservation for before-only, after-only, and transport-failure cases.
-- [ ] Test report provenance and baseline comparison behavior.
+- [x] Test report provenance and baseline comparison behavior.
 
 ## Phase 4: Advanced Robustness
 

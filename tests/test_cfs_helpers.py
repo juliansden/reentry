@@ -106,6 +106,30 @@ def test_render_config_main_reports_missing_required_ids(tmp_path, monkeypatch, 
     assert "CI_LAB_CMD_MID" in captured.err
 
 
+def test_render_config_preserves_resolved_identifiers_for_report_provenance(
+    tmp_path, monkeypatch
+):
+    resolved_ids = tmp_path / "resolved_ids.json"
+    resolved_ids.write_text(
+        json.dumps(
+            {
+                "CI_LAB_CMD_MID": 0x1884,
+                "CI_LAB_SEND_HK_MID": 0x1885,
+                "CI_LAB_HK_TLM_MID": 0x0884,
+                "CI_LAB_CMD_UDP_PORT": 1234,
+                "TO_LAB_TLM_PORT": 1235,
+            }
+        )
+    )
+    output = tmp_path / "reentry.toml"
+    monkeypatch.setattr(sys, "argv", ["render_config.py", str(resolved_ids), str(output)])
+
+    assert render_config_main() == 0
+    rendered = output.read_text()
+    assert "resolved_identifiers = {" in rendered
+    assert "CI_LAB_CMD_MID = 6276" in rendered
+
+
 def test_safe_drop_is_not_unsafe():
     assert Verdict.SAFE_DROP.is_unsafe is False
 

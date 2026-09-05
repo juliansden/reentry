@@ -10,6 +10,7 @@ from reentry.ccsds.packet import PrimaryHeader
 from reentry.generator.boundary import generate_all
 from reentry.generator.cases import PacketCase
 from reentry.harness.config import RunConfig
+from reentry.harness.health import ExternalHealthCheck
 from reentry.harness.profiles import categories_for_profile
 from reentry.oracle.base import Oracle, OracleResult, Verdict
 from reentry.transport.base import Transport
@@ -41,6 +42,8 @@ def _load_oracle(config: RunConfig) -> Oracle:
     module_path, _, class_name = config.oracle.plugin.rpartition(".")
     oracle_cls = getattr(importlib.import_module(module_path), class_name)
     args = dict(config.oracle.args)
+    if config.health_command is not None:
+        args.setdefault("health_check", ExternalHealthCheck(config.health_command, config.timeout))
     if config.oracle.plugin in {
         "reentry.oracle.liveness.LivenessOracle",
         "reentry.oracle.ci_lab.CiLabOracle",

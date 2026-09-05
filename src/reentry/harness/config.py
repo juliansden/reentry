@@ -99,6 +99,10 @@ class RunConfig(BaseModel):
     transport: TransportConfig
     oracle: OracleConfig = OracleConfig()
     profile: TargetProfile | None = None
+    health_command: list[str] | None = None
+    target_build: str | None = None
+    target_version: str | None = None
+    resolved_identifiers: dict[str, int | str] = Field(default_factory=dict)
     include_categories: list[str] | None = None
     exclude_categories: list[str] = Field(default_factory=list)
     timeout: float = 2.0
@@ -111,6 +115,13 @@ class RunConfig(BaseModel):
     def validate_timeout(cls, value: float) -> float:
         if value <= 0:
             raise ValueError(f"timeout must be greater than 0, got {value}")
+        return value
+
+    @field_validator("health_command")
+    @classmethod
+    def validate_health_command(cls, value: list[str] | None) -> list[str] | None:
+        if value is not None and not value:
+            raise ValueError("health_command must contain an executable command")
         return value
 
     @model_validator(mode="after")

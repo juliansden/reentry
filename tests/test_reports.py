@@ -34,6 +34,23 @@ def test_json_report_identifies_known_good_acceptance():
         }
     ]
     assert report["profile"] is None
+    assert report["provenance"] is None
+
+
+def test_reports_preserve_provenance_metadata():
+    provenance = {
+        "harness_version": "0.6.0",
+        "target_build": "cfs-abc123",
+        "configuration_hash": "deadbeef",
+        "adapter": "cfs-ci-lab",
+    }
+    report = json.loads(to_json([], provenance=provenance))
+    xml = to_junit_xml([], provenance=provenance)
+
+    assert report["provenance"] == provenance
+    assert 'name="reentry.adapter"' in xml
+    assert 'name="reentry.configuration_hash"' in xml
+    assert "cfs-ci-lab" in xml
 
 
 def test_junit_report_only_marks_unsafe_findings_as_failures():

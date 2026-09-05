@@ -1,4 +1,5 @@
 import json
+import re
 
 from typer.testing import CliRunner
 
@@ -6,6 +7,10 @@ from reentry.cli import app
 from reentry.generator.cases import PacketCase
 from reentry.harness.runner import Finding
 from reentry.oracle.base import Verdict
+
+
+def _strip_ansi(value: str) -> str:
+    return re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", value)
 
 
 def _write_config(path):
@@ -133,3 +138,128 @@ def test_run_rejects_hardened_profile_without_adapter_capability(tmp_path):
     assert result.exit_code == 2
     assert "enforces_hardened_policy" in result.output
     assert "Traceback" not in result.output
+
+
+def test_compare_reports_passes_identical_reports(tmp_path):
+    baseline = tmp_path / "baseline.json"
+    actual = tmp_path / "actual.json"
+    content = {"findings": [{"name": "case", "verdict": "clean_reject"}]}
+    baseline.write_text(json.dumps(content))
+    actual.write_text(json.dumps(content))
+
+    result = CliRunner().invoke(
+        app, ["compare", "--baseline", str(baseline), "--actual", str(actual)]
+    )
+
+    assert result.exit_code == 0
+    assert "comparison passed" in result.output
+
+
+def test_compare_reports_fails_on_verdict_change_and_writes_details(tmp_path):
+    baseline = tmp_path / "baseline.json"
+    actual = tmp_path / "actual.json"
+    comparison = tmp_path / "comparison.json"
+    baseline.write_text(json.dumps({"findings": [{"name": "case", "verdict": "clean_reject"}]}))
+    actual.write_text(json.dumps({"findings": [{"name": "case", "verdict": "hang"}]}))
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "compare",
+            "--baseline",
+            str(baseline),
+            "--actual",
+            str(actual),
+            "--json",
+            str(comparison),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "verdict_changed" in result.output
+    assert json.loads(comparison.read_text())["difference_count"] == 1
+
+
+def test_compare_reports_rejects_invalid_report_schema_without_traceback(tmp_path):
+    baseline = tmp_path / "baseline.json"
+    actual = tmp_path / "actual.json"
+    baseline.write_text(json.dumps({"findings": [{"name": "case", "verdict": "clean_reject"}]}))
+    actual.write_text(json.dumps({"findings": [{}]}))
+
+    result = CliRunner().invoke(
+        app, ["compare", "--baseline", str(baseline), "--actual", str(actual)]
+    )
+    output = _strip_ansi(result.output)
+
+    assert result.exit_code == 2
+    assert "Invalid value for --baseline/--actual" in output
+    assert "actual finding at index 0" in output
+    assert "Traceback" not in output
+
+
+def test_compare_reports_rejects_duplicate_finding_names_without_traceback(tmp_path):
+    baseline = tmp_path / "baseline.json"
+    actual = tmp_path / "actual.json"
+    baseline.write_text(
+        json.dumps(
+            {
+                "findings": [
+                    {"name": "case", "verdict": "clean_reject"},
+                    {"name": "case", "verdict": "hang"},
+                ]
+            }
+        )
+    )
+    actual.write_text(json.dumps({"findings": [{"name": "case", "verdict": "clean_reject"}]}))
+
+    result = CliRunner().invoke(
+        app, ["compare", "--baseline", str(baseline), "--actual", str(actual)]
+    )
+
+    assert result.exit_code == 2
+    assert "baseline report contains duplicate" in result.output
+    assert "finding name 'case'" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_compare_reports_identifies_which_json_input_is_invalid(tmp_path):
+    baseline = tmp_path / "baseline.json"
+    actual = tmp_path / "actual.json"
+    baseline.write_text("{")
+    actual.write_text(json.dumps({"findings": [{"name": "case", "verdict": "clean_reject"}]}))
+
+    result = CliRunner().invoke(
+        app, ["compare", "--baseline", str(baseline), "--actual", str(actual)]
+    )
+    output = _strip_ansi(result.output)
+
+    assert result.exit_code == 2
+    assert "Invalid value for --baseline" in output
+    assert "cannot read JSON report" in output
+
+
+def test_compare_reports_rejects_unwritable_json_output_without_traceback(tmp_path):
+    baseline = tmp_path / "baseline.json"
+    actual = tmp_path / "actual.json"
+    baseline.write_text(json.dumps({"findings": [{"name": "case", "verdict": "clean_reject"}]}))
+    actual.write_text(json.dumps({"findings": [{"name": "case", "verdict": "clean_reject"}]}))
+    unwritable_path = tmp_path / "missing" / "comparison.json"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "compare",
+            "--baseline",
+            str(baseline),
+            "--actual",
+            str(actual),
+            "--json",
+            str(unwritable_path),
+        ],
+    )
+    output = _strip_ansi(result.output)
+
+    assert result.exit_code == 2
+    assert "Invalid value for --json" in output
+    assert "cannot write comparison JSON" in output
+    assert "Traceback" not in output

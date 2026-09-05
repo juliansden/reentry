@@ -13,6 +13,7 @@ from dataclasses import asdict, dataclass
 
 from reentry.generator.cases import PacketCase
 from reentry.harness.adapters import CI_LAB_CONTRACT, AdapterContract
+from reentry.harness.health import HealthResult
 from reentry.oracle.base import Oracle, OracleResult, Verdict
 from reentry.transport.base import Transport, TransportError
 
@@ -72,9 +73,18 @@ class CiLabOracle(Oracle):
 
     adapter_contract: AdapterContract = CI_LAB_CONTRACT
 
-    def __init__(self, hk_request_payload_hex: str, probe_timeout: float = 2.0) -> None:
+    def __init__(
+        self, hk_request_payload_hex: str, probe_timeout: float = 2.0, health_check=None
+    ) -> None:
         self._hk_request_payload = bytes.fromhex(hk_request_payload_hex)
         self._probe_timeout = probe_timeout
+        self._health_check = health_check
+
+    def _health_evidence(self) -> tuple[HealthResult | None, dict]:
+        if self._health_check is None:
+            return None, {}
+        result = self._health_check()
+        return result, {"health": {"alive": result.alive, "detail": result.detail}}
 
     def _read_counters(
         self, transport: Transport
@@ -102,9 +112,15 @@ class CiLabOracle(Oracle):
                     evidence,
                     transport_error,
                 )
+            health, health_evidence = self._health_evidence()
+            evidence.update(health_evidence)
+            if health is not None and not health.alive:
+                return OracleResult(Verdict.CRASH, health.detail, evidence)
             return OracleResult(
                 Verdict.HANG,
-                "no HK reply before sending case (target already unresponsive)",
+                "no HK reply before sending case (target still reports alive)"
+                if health is not None
+                else "no HK reply before sending case (target already unresponsive)",
                 evidence,
             )
 
@@ -129,9 +145,15 @@ class CiLabOracle(Oracle):
                     evidence,
                     transport_error,
                 )
+            health, health_evidence = self._health_evidence()
+            evidence.update(health_evidence)
+            if health is not None and not health.alive:
+                return OracleResult(Verdict.CRASH, health.detail, evidence)
             return OracleResult(
                 Verdict.HANG,
-                "no HK reply after sending case (possible hang/crash)",
+                "no HK reply after sending case (target still reports alive)"
+                if health is not None
+                else "no HK reply after sending case (possible hang/crash)",
                 evidence,
             )
 

@@ -10,7 +10,11 @@ from reentry.harness.profiles import TargetProfile
 from reentry.harness.runner import Finding
 
 
-def to_junit_xml(findings: list[Finding], profile: TargetProfile | None = None) -> str:
+def to_junit_xml(
+    findings: list[Finding],
+    profile: TargetProfile | None = None,
+    provenance: dict[str, object] | None = None,
+) -> str:
     failures = sum(1 for f in findings if f.verdict.is_unsafe)
     suite = Element(
         "testsuite",
@@ -18,9 +22,18 @@ def to_junit_xml(findings: list[Finding], profile: TargetProfile | None = None) 
         tests=str(len(findings)),
         failures=str(failures),
     )
-    if profile is not None:
+    if profile is not None or provenance is not None:
         properties = SubElement(suite, "properties")
-        SubElement(properties, "property", name="reentry.profile", value=profile.value)
+        if profile is not None:
+            SubElement(properties, "property", name="reentry.profile", value=profile.value)
+        if provenance is not None:
+            for name, value in provenance.items():
+                SubElement(
+                    properties,
+                    "property",
+                    name=f"reentry.{name}",
+                    value=json.dumps(value, sort_keys=True),
+                )
     for f in findings:
         case_el = SubElement(
             suite,

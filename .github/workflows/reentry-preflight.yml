@@ -50,7 +50,7 @@ jobs:
 
   cfs_ci_lab-preflight:
     # Heavier real-target run: build & boot the actual cFS/ci_lab sandbox.
-    # Manual trigger only — not part of the fast per-push gate.
+    # Manual baseline runs only — not part of the fast per-push gate.
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     needs: unit-tests
@@ -60,10 +60,23 @@ jobs:
       - run: docker run -d --name cfs-ci-lab --privileged --sysctl fs.mqueue.msg_max=1024 --add-host=host.docker.internal:host-gateway -p 127.0.0.1:1234:1234/udp cfs-ci-lab
       - name: wait for cFE to boot
         run: |
-          for i in $(seq 1 30); do
-            docker logs cfs-ci-lab 2>&1 | grep -q "CFE_ES_Main" && break
+          ready=0
+          for _ in $(seq 1 60); do
+            if ! docker inspect -f '{{.State.Running}}' cfs-ci-lab 2>/dev/null | grep -q '^true$'; then
+              echo "cFS container stopped before becoming operational." >&2
+              exit 1
+            fi
+            if docker logs cfs-ci-lab 2>&1 | grep -q "CFE_ES_Main entering OPERATIONAL state"; then
+              ready=1
+              break
+            fi
             sleep 1
           done
+          if [ "$ready" -ne 1 ]; then
+            echo "cFS did not reach operational state in time." >&2
+            docker logs cfs-ci-lab >&2 || true
+            exit 1
+          fi
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
@@ -90,7 +103,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: reentry evidence (real ci_lab)
+          name: reentry baseline evidence (real ci_lab)
           path: report.json
           if-no-files-found: warn
       - name: stop and remove the sandbox container

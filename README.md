@@ -13,6 +13,8 @@ The current implementation targets CCSDS Space Packets and provides:
 - A pluggable transport interface with a UDP adapter
 - Liveness and ci_lab counter-based oracle implementations
 - JSON and JUnit XML reports
+- Report provenance including harness version, target metadata, configuration hash,
+  adapter, telemetry schema, and resolved target identifiers
 - A CLI: `reentry run` and `reentry list-cases`
 - A local mock target for fast development
 - A Docker build for the cFS/ci_lab validation target
@@ -166,6 +168,18 @@ configuration (use the build-resolved `target_apid` for real cFS):
 include_categories = ["known_good"]
 ```
 
+An optional external health command can distinguish a crashed target from a
+live target that stopped answering its protocol probe. Configure it as an argv
+array; exit status 0 means alive and any other status, execution error, or
+timeout reports `crash` when the protocol probe also fails:
+
+```toml
+health_command = ["docker", "inspect", "--format", "{{.State.Running}}", "cfs-ci-lab"]
+```
+
+Without `health_command`, the existing no-response result remains `hang` with
+the possible crash ambiguity preserved.
+
 The run must report `clean_accept` and a detail showing `CommandCounter`
 increased. The full suite keeps malformed cases separate: `clean_reject`,
 `safe_drop`, and `inconclusive` are non-unsafe outcomes; only hangs, crashes,
@@ -193,6 +207,22 @@ The Docker workflow runs the complete suite and explicitly verifies that the
 known-good NOOP reports `clean_accept` with a `CommandCounter` increase before
 cleanup. It also writes `report.json` and `report.xml`; malformed cases that
 remain `inconclusive` are recorded there without failing the run by themselves.
+The GitHub Actions cFS job is available by manual dispatch and archives the
+real-target JSON report as baseline evidence; it is not run automatically.
+
+Reports include a `provenance` object, or matching `reentry.*` JUnit properties,
+with the harness version, optional target build and version, resolved target
+identifiers, a SHA-256 hash of the validated configuration, adapter name, and
+telemetry schema identity.
+
+Compare a new JSON report with a checked-in or downloaded baseline in CI:
+
+```sh
+reentry compare --baseline baseline.json --actual report.json --json comparison.json
+```
+
+The command exits with status 1 when a case is added, removed, or changes
+verdict, and writes deterministic difference records when `--json` is used.
 The command-level malformed suite also checks checksum handling. If cFS reports
 `EnableChecksums = 0`, the deliberately bad-checksum command is expected to be
 accepted and is correctly reported as `unexpected_accept`. The stock cFS v7.0.1
