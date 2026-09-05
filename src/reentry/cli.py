@@ -107,7 +107,10 @@ def compare(
     except (OSError, json.JSONDecodeError) as error:
         raise typer.BadParameter(f"cannot read JSON report: {error}") from error
 
-    differences = compare_reports(baseline_report, actual_report)
+    try:
+        differences = compare_reports(baseline_report, actual_report)
+    except ValueError as error:
+        raise typer.BadParameter(str(error), param_hint="--baseline/--actual") from error
     result = {"differences": differences, "difference_count": len(differences)}
     if json_out is not None:
         json_out.write_text(json.dumps(result, indent=2) + "\n")

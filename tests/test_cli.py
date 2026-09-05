@@ -173,3 +173,19 @@ def test_compare_reports_fails_on_verdict_change_and_writes_details(tmp_path):
     assert result.exit_code == 1
     assert "verdict_changed" in result.output
     assert json.loads(comparison.read_text())["difference_count"] == 1
+
+
+def test_compare_reports_rejects_invalid_report_schema_without_traceback(tmp_path):
+    baseline = tmp_path / "baseline.json"
+    actual = tmp_path / "actual.json"
+    baseline.write_text(json.dumps({"findings": [{"name": "case", "verdict": "clean_reject"}]}))
+    actual.write_text(json.dumps({"findings": [{}]}))
+
+    result = CliRunner().invoke(
+        app, ["compare", "--baseline", str(baseline), "--actual", str(actual)]
+    )
+
+    assert result.exit_code == 2
+    assert "Invalid value for --baseline/--actual" in result.output
+    assert "actual finding at index 0" in result.output
+    assert "Traceback" not in result.output

@@ -3,10 +3,33 @@
 from __future__ import annotations
 
 
+def _findings_by_name(report_name: str, report: dict) -> dict[str, dict[str, str]]:
+    findings = report.get("findings")
+    if not isinstance(findings, list):
+        raise ValueError(f"{report_name} report must contain a 'findings' list")
+
+    cases: dict[str, dict[str, str]] = {}
+    for index, finding in enumerate(findings):
+        if not isinstance(finding, dict):
+            raise ValueError(f"{report_name} finding at index {index} must be an object")
+        name = finding.get("name")
+        verdict = finding.get("verdict")
+        if not isinstance(name, str) or not name:
+            raise ValueError(
+                f"{report_name} finding at index {index} must contain a non-empty string 'name'"
+            )
+        if not isinstance(verdict, str) or not verdict:
+            raise ValueError(
+                f"{report_name} finding {name!r} must contain a non-empty string 'verdict'"
+            )
+        cases[name] = {"name": name, "verdict": verdict}
+    return cases
+
+
 def compare_reports(baseline: dict, actual: dict) -> list[dict[str, str | None]]:
     """Return deterministic differences in case presence or verdicts."""
-    baseline_cases = {finding["name"]: finding for finding in baseline.get("findings", [])}
-    actual_cases = {finding["name"]: finding for finding in actual.get("findings", [])}
+    baseline_cases = _findings_by_name("baseline", baseline)
+    actual_cases = _findings_by_name("actual", actual)
     differences: list[dict[str, str | None]] = []
 
     for name in sorted(baseline_cases.keys() - actual_cases.keys()):
