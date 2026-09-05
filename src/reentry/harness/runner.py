@@ -49,7 +49,12 @@ def _load_oracle(config: RunConfig) -> Oracle:
     oracle = oracle_cls(**args)
     profile = config.profile
     contract = getattr(oracle, "adapter_contract", None)
-    if profile is not None and contract is not None:
+    if profile is not None:
+        if contract is None:
+            raise ValueError(
+                f"oracle plugin {config.oracle.plugin!r} does not declare adapter_contract "
+                f"required for profile {profile.value!r}"
+            )
         contract.validate_profile(profile.value)
     return oracle
 

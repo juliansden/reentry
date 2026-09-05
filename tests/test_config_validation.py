@@ -54,6 +54,14 @@ def test_unknown_category_is_rejected(field):
         _config(**{field: ["not-a-real-category"]})
 
 
+def test_empty_exclude_categories_skips_category_lookup(monkeypatch):
+    monkeypatch.setattr(
+        "reentry.harness.config._known_categories",
+        lambda: (_ for _ in ()).throw(AssertionError("should not be called")),
+    )
+    _config(exclude_categories=[])
+
+
 def test_oracle_plugin_must_be_importable():
     with pytest.raises(ValidationError, match="cannot be imported"):
         OracleConfig(plugin="reentry.oracle.missing.MissingOracle")

@@ -70,6 +70,8 @@ reentry run --config target.toml --profile smoke
 - `hardened-cfs` requires an adapter that reports hardened-policy enforcement and
     the required before/after evidence; current adapters reject this profile rather
     than making an unsupported claim.
+- `full-robustness` runs the complete suite and is the default profile used by
+    helper scripts unless `REENTRY_PROFILE` is set.
 
 Profiles do not alter observed oracle verdicts. JSON and JUnit reports record
 the selected profile, verdict, detail, and per-case telemetry evidence.

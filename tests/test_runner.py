@@ -1,5 +1,9 @@
+import importlib
 import threading
 import struct
+from types import SimpleNamespace
+
+import pytest
 
 from reentry.generator.cases import PacketCase
 from reentry.harness.config import OracleConfig, RunConfig, TransportConfig
@@ -201,6 +205,26 @@ def test_hardened_profile_requires_adapter_capability():
         assert "enforces_hardened_policy" in str(error)
     else:
         raise AssertionError("hardened profile should require an enforcement capability")
+
+
+def test_profile_requires_oracle_adapter_contract(monkeypatch):
+    class OracleWithoutContract:
+        def __init__(self, **kwargs):
+            pass
+
+    monkeypatch.setattr(
+        importlib,
+        "import_module",
+        lambda _module_path: SimpleNamespace(OracleWithoutContract=OracleWithoutContract),
+    )
+
+    config = RunConfig(
+        transport=TransportConfig(host="127.0.0.1", port=1234),
+        oracle=OracleConfig(plugin="custom.module.OracleWithoutContract"),
+    ).with_profile("hardened-cfs")
+
+    with pytest.raises(ValueError, match="does not declare adapter_contract"):
+        _load_oracle(config)
 
 
 def test_select_cases_retargets_to_valid_command_mid():

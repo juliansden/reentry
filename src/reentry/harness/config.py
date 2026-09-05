@@ -20,8 +20,8 @@ def _known_categories() -> frozenset[str]:
 
 
 def _validate_categories(value: list[str] | None) -> list[str] | None:
-    if value is None:
-        return None
+    if value is None or not value:
+        return value
     unknown = sorted(set(value) - _known_categories())
     if unknown:
         raise ValueError(
