@@ -229,3 +229,29 @@ def test_compare_reports_identifies_which_json_input_is_invalid(tmp_path):
     assert result.exit_code == 2
     assert "Invalid value for --baseline" in result.output
     assert "cannot read JSON report" in result.output
+
+
+def test_compare_reports_rejects_unwritable_json_output_without_traceback(tmp_path):
+    baseline = tmp_path / "baseline.json"
+    actual = tmp_path / "actual.json"
+    baseline.write_text(json.dumps({"findings": [{"name": "case", "verdict": "clean_reject"}]}))
+    actual.write_text(json.dumps({"findings": [{"name": "case", "verdict": "clean_reject"}]}))
+    unwritable_path = tmp_path / "missing" / "comparison.json"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "compare",
+            "--baseline",
+            str(baseline),
+            "--actual",
+            str(actual),
+            "--json",
+            str(unwritable_path),
+        ],
+    )
+
+    assert result.exit_code == 2
+    assert "Invalid value for --json" in result.output
+    assert "cannot write comparison JSON" in result.output
+    assert "Traceback" not in result.output

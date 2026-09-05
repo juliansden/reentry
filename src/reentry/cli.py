@@ -116,7 +116,12 @@ def compare(
         raise typer.BadParameter(str(error), param_hint="--baseline/--actual") from error
     result = {"differences": differences, "difference_count": len(differences)}
     if json_out is not None:
-        json_out.write_text(json.dumps(result, indent=2) + "\n")
+        try:
+            json_out.write_text(json.dumps(result, indent=2) + "\n")
+        except OSError as error:
+            raise typer.BadParameter(
+                f"cannot write comparison JSON: {error}", param_hint="--json"
+            ) from error
     if differences:
         for difference in differences:
             typer.echo(
