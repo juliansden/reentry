@@ -205,6 +205,8 @@ The Docker workflow runs the complete suite and explicitly verifies that the
 known-good NOOP reports `clean_accept` with a `CommandCounter` increase before
 cleanup. It also writes `report.json` and `report.xml`; malformed cases that
 remain `inconclusive` are recorded there without failing the run by themselves.
+The GitHub Actions cFS job runs on a nightly schedule as well as by manual
+dispatch and archives the real-target JSON report as baseline evidence.
 The command-level malformed suite also checks checksum handling. If cFS reports
 `EnableChecksums = 0`, the deliberately bad-checksum command is expected to be
 accepted and is correctly reported as `unexpected_accept`. The stock cFS v7.0.1
