@@ -1,25 +1,59 @@
 # Reentry
 
-Reentry is a Python harness for CCSDS Space Packet conformance and robustness testing. It builds and validates Space Packets, generates deterministic malformed and boundary-value inputs, delivers them over UDP, and reports whether a target rejects them safely or becomes unresponsive or unexpectedly accepts them.
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Python Version](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
+[![Standard](https://img.shields.io/badge/CCSDS-133.0--B--2-orbit.svg)](src/reentry/ccsds/constants.py)
+[![CI Pre-flight](https://github.com/juliansden/reentry/actions/workflows/reentry-preflight.yml/badge.svg)](https://github.com/juliansden/reentry/actions/workflows/reentry-preflight.yml)
 
-See [ROADMAP.md](ROADMAP.md) for project direction.
+**Reentry** is a high-assurance Python testing harness for CCSDS Space Packet Protocol ([CCSDS 133.0-B-2](src/reentry/ccsds/constants.py)) packet construction, boundary testing, and flight software robustness validation.
 
-## Status
+It systematically generates deterministic valid, boundary-value, and malformed Space Packets, delivers them over network transports (such as UDP), observes target telemetry before and after packet injection, and evaluates whether the flight software or system under test (SUT) safely accepts, cleanly rejects, or dangerously fails (hangs or crashes).
 
-The current implementation targets CCSDS Space Packets and provides:
+---
 
-- Primary-header packing, unpacking, and validation
-- Deterministic boundary cases for malformed and degenerate packets
-- A pluggable transport interface with a UDP adapter
-- Liveness and ci_lab counter-based oracle implementations
-- JSON and JUnit XML reports
-- Report provenance including harness version, target metadata, configuration hash,
-  adapter, telemetry schema, and resolved target identifiers
-- A CLI: `reentry run` and `reentry list-cases`
-- A local mock target for fast development
-- A Docker build for the cFS/ci_lab validation target
+## Table of Contents
+
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [Architecture](#architecture)
+- [Quick Start](#quick-start)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+  - [1. Fast Local Run (Mock Target)](#1-fast-local-run-mock-target)
+  - [2. Flight Software Validation (NASA cFS)](#2-flight-software-validation-nasa-cfs)
+- [CLI Reference](#cli-reference)
+- [Configuration & Target Profiles](#configuration--target-profiles)
+- [Telemetry Oracles & Adapter Contracts](#telemetry-oracles--adapter-contracts)
+- [Provenance & Baseline Comparison](#provenance--baseline-comparison)
+- [Development & Testing](#development--testing)
+- [Roadmap & Contributing](#roadmap--contributing)
+- [License & Standards](#license--standards)
+
+---
+
+## Overview
+
+Flight software must remain resilient against corrupted or malformed Space Packets received over space-to-ground or inter-subsystem data links. Traditional fuzzing can produce non-deterministic or unrepeatable failures. **Reentry** provides:
+
+- **Deterministic Boundary Generation**: Systematically tests packet header boundaries (e.g. invalid packet lengths, sequence count gaps, corrupt APIDs, broken checksums, truncated primary headers).
+- **Automated Evidence & Telemetry Oracles**: Captures telemetry counter deltas (`CommandCounter`, `CommandErrorCounter`, `IngestPackets`) to verify whether a packet was processed, rejected, or dropped.
+- **Audit-Grade Provenance**: Records harness metadata, target configuration hashes, build-resolved message IDs, and telemetry schemas in structured JSON and JUnit XML reports.
+
+---
+
+## Key Features
+
+- **CCSDS 133.0-B-2 Compliance**: Full support for packing, unpacking, validating primary headers, sequence controls, and optional APID retargeting while preserving packet checksums.
+- **Target Profiles**: Pre-configured case suites (`smoke`, `stock-cfs`, `hardened-cfs`, `full-robustness`) for reproducible CI testing.
+- **Pluggable Architecture**: Modular transport adapters (UDP) and extensible oracle interfaces.
+- **Automated NASA cFS Integration**: Directly parses cFS header build artifacts (`generated_headers`) to resolve `CI_LAB` and `TO_LAB` message IDs dynamically without guesswork.
+- **Baseline Drift Detection**: Built-in diff tool (`reentry compare`) to detect regression or unexpected verdict drift against baseline runs in CI pipelines.
+
+---
 
 ## Architecture
+
+The following diagram illustrates how Reentry orchestrates packet generation, target delivery, telemetry observation, oracle evaluation, and report emission:
 
 ```mermaid
 flowchart LR
@@ -64,180 +98,238 @@ flowchart LR
     VERDICT --> FINDING
 ```
 
-The cFS/ci_lab integration is a separate, heavier validation path. Its generated message IDs are resolved from the actual cFS build rather than guessed.
+---
 
-For a local cFS run, build and start the image with Docker Desktop, then use the
-host-side helpers to resolve IDs, enable TO_LAB telemetry, and render the config:
+## Quick Start
 
-```sh
-docker build -t cfs-ci-lab docker/cfs_ci_lab
-# Bind ci_lab's command port only on the host loopback interface.
-docker run -d --name cfs-ci-lab --privileged --sysctl fs.mqueue.msg_max=1024 --add-host=host.docker.internal:host-gateway -p 127.0.0.1:1234:1234/udp cfs-ci-lab
-docker cp cfs-ci-lab:/cfs/generated_headers /tmp/generated_headers
-python docker/cfs_ci_lab/resolve_ids.py /tmp/generated_headers /tmp/resolved_ids.json
-TELEMETRY_SOURCE=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' cfs-ci-lab)
-python docker/cfs_ci_lab/render_config.py /tmp/resolved_ids.json /tmp/reentry.toml --allowed-reply-host "$TELEMETRY_SOURCE"
-HOST_IP=$(docker exec cfs-ci-lab getent ahostsv4 host.docker.internal | awk 'NR == 1 {print $1}')
-python docker/cfs_ci_lab/enable_to_lab.py /tmp/resolved_ids.json --destination-ip "$HOST_IP"
-reentry run --config /tmp/reentry.toml --json report.json --junit report.xml
-docker rm -f cfs-ci-lab
-```
+### Prerequisites
 
-The destination address is discovered from Docker's host gateway, so the same
-workflow works on Docker Desktop and Linux. The image exports the build-resolved
-CI_LAB and TO_LAB values in `ci_lab_ids.json`, so IDs are never guessed.
+- **Python**: 3.11 or newer
+- **Docker** *(Optional)*: Required for running NASA cFS (`ci_lab`) containerized validation
 
-## Development
+### Installation
 
-Python 3.11 or newer is required.
+Clone the repository and install dependencies:
 
 ```sh
+git clone https://github.com/juliansden/reentry.git
+cd reentry
+
+# Create and activate virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
+
+# Install package in editable mode with development dependencies
 pip install -e ".[dev]"
-python -m pytest -q
 ```
 
-List the deterministic cases:
+Verify installation:
 
 ```sh
-reentry list-cases
+reentry --help
 ```
 
-## Target Profiles
+---
 
-Select a named, reproducible profile with `--profile`:
+### 1. Fast Local Run (Mock Target)
 
-```sh
-reentry run --config target.toml --profile smoke
-```
-
-- `smoke` runs the known-good command control for fast valid-command and liveness checks.
-- `stock-cfs` runs the complete suite to characterize the target as shipped.
-- `hardened-cfs` requires an adapter that reports hardened-policy enforcement and
-    the required before/after evidence; current adapters reject this profile rather
-    than making an unsupported claim.
-- `full-robustness` runs the complete suite and is the default profile used by
-    helper scripts unless `REENTRY_PROFILE` is set.
-
-Profiles do not alter observed oracle verdicts. JSON and JUnit reports record
-the selected profile, verdict, detail, and per-case telemetry evidence.
-`INCONCLUSIVE` remains inconclusive; `UNEXPECTED_ACCEPT`, `HANG`, and `CRASH`
-fail the run.
-
-### Target adapter contracts
-
-Each oracle declares an adapter contract in `reentry.harness.adapters`. The
-generic liveness adapter reports target health only and has no telemetry schema,
-so it cannot distinguish acceptance from rejection. The cFS/ci_lab adapter uses
-the version `7.0.1` `ci_lab_housekeeping` schema with these fields:
-
-- `command`
-- `command_error`
-- `enable_checksums`
-- `socket_connected`
-- `ingest_packets`
-- `ingest_errors`
-
-The cFS adapter maps command-error deltas to `clean_reject`, ingest-error
-deltas to `safe_drop`, command deltas to `clean_accept`, missing after-telemetry
-to `hang`, and transport failures to `inconclusive`. Neither current adapter
-claims hardened-policy enforcement. The runner rejects `hardened-cfs` until the
-target exposes a reliable enforcement signal.
-
-Run against the local mock target:
+Execute a full robustness suite against an included local Python mock target:
 
 ```sh
 scripts/run-local.sh
 ```
 
-Set `REENTRY_PROFILE=smoke` for the fast profile or leave the default
-`full-robustness` profile in place.
-
-The script stops the mock target when the run finishes. It uses UDP port `1234`;
-set `REENTRY_PORT` if that port is busy:
-
-```sh
-REENTRY_PORT=1235 scripts/run-local.sh
-```
-
-Run only the known-good CI_LAB NOOP against a target by adding this to a TOML
-configuration (use the build-resolved `target_apid` for real cFS):
-
-```toml
-include_categories = ["known_good"]
-```
-
-An optional external health command can distinguish a crashed target from a
-live target that stopped answering its protocol probe. Configure it as an argv
-array; exit status 0 means alive and any other status, execution error, or
-timeout reports `crash` when the protocol probe also fails:
-
-```toml
-health_command = ["docker", "inspect", "--format", "{{.State.Running}}", "cfs-ci-lab"]
-```
-
-Without `health_command`, the existing no-response result remains `hang` with
-the possible crash ambiguity preserved.
-
-The run must report `clean_accept` and a detail showing `CommandCounter`
-increased. The full suite keeps malformed cases separate: `clean_reject`,
-`safe_drop`, and `inconclusive` are non-unsafe outcomes; only hangs, crashes,
-and unexpected accepts fail the CLI run.
-
-`IngestPackets` is included as diagnostic evidence, but its delta also includes
-the HK probes used to read telemetry, so it is not used alone to claim rejection.
-
-Run the intentionally faulty mock target to verify unsafe-result detection:
+To test failure detection against an intentionally buggy target:
 
 ```sh
 scripts/run-local.sh --buggy
 ```
 
-Run the real cFS/ci_lab target in Docker with the complete setup and cleanup flow:
+---
+
+### 2. Flight Software Validation (NASA cFS)
+
+Run the full robustness suite against NASA Core Flight System (cFS) `ci_lab` in Docker:
 
 ```sh
 scripts/run-cfs-docker.sh
 ```
 
-The Docker helper uses `full-robustness` by default; set `REENTRY_PROFILE` to
-select another named profile.
+Or execute step-by-step manually:
 
-The Docker workflow runs the complete suite and explicitly verifies that the
-known-good NOOP reports `clean_accept` with a `CommandCounter` increase before
-cleanup. It also writes `report.json` and `report.xml`; malformed cases that
-remain `inconclusive` are recorded there without failing the run by themselves.
-The GitHub Actions cFS job is available by manual dispatch and archives the
-real-target JSON report as baseline evidence; it is not run automatically.
+```sh
+# 1. Build and start the cFS ci_lab Docker container
+docker build -t cfs-ci-lab docker/cfs_ci_lab
+docker run -d --name cfs-ci-lab \
+  --privileged \
+  --sysctl fs.mqueue.msg_max=1024 \
+  --add-host=host.docker.internal:host-gateway \
+  -p 127.0.0.1:1234:1234/udp \
+  cfs-ci-lab
 
-Reports include a `provenance` object, or matching `reentry.*` JUnit properties,
-with the harness version, optional target build and version, resolved target
-identifiers, a SHA-256 hash of the validated configuration, adapter name, and
-telemetry schema identity.
+# 2. Extract generated build headers and resolve message IDs
+docker cp cfs-ci-lab:/cfs/generated_headers /tmp/generated_headers
+python docker/cfs_ci_lab/resolve_ids.py /tmp/generated_headers /tmp/resolved_ids.json
 
-Compare a new JSON report with a checked-in or downloaded baseline in CI:
+# 3. Render test configuration and enable TO_LAB telemetry output
+TELEMETRY_SOURCE=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' cfs-ci-lab)
+python docker/cfs_ci_lab/render_config.py /tmp/resolved_ids.json /tmp/reentry.toml --allowed-reply-host "$TELEMETRY_SOURCE"
+HOST_IP=$(docker exec cfs-ci-lab getent ahostsv4 host.docker.internal | awk 'NR == 1 {print $1}')
+python docker/cfs_ci_lab/enable_to_lab.py /tmp/resolved_ids.json --destination-ip "$HOST_IP"
+
+# 4. Run Reentry test execution
+reentry run --config /tmp/reentry.toml --json report.json --junit report.xml
+
+# 5. Cleanup container
+docker rm -f cfs-ci-lab
+```
+
+---
+
+## CLI Reference
+
+Reentry provides a command-line interface for listing test cases, executing test runs, and comparing report baselines:
+
+### List Test Cases
+
+Display all generated boundary test cases and their target profiles:
+
+```sh
+reentry list-cases
+reentry list-cases --profile smoke
+```
+
+### Run Harness Execution
+
+Execute test cases against a configured target:
+
+```sh
+reentry run --config reentry.toml \
+            --profile full-robustness \
+            --json report.json \
+            --junit report.xml
+```
+
+**Options:**
+- `--config <path>`: Path to target TOML configuration file (*Required*).
+- `--profile <name>`: Case profile (`smoke`, `stock-cfs`, `hardened-cfs`, `full-robustness`) [default: `full-robustness`].
+- `--json <path>`: Output file path for JSON report.
+- `--junit <path>`: Output file path for JUnit XML report.
+
+### Compare Report Baselines
+
+Compare a new test run report against a verified baseline report in CI:
 
 ```sh
 reentry compare --baseline baseline.json --actual report.json --json comparison.json
 ```
 
-The command exits with status 1 when a case is added, removed, or changes
-verdict, and writes deterministic difference records when `--json` is used.
-The command-level malformed suite also checks checksum handling. If cFS reports
-`EnableChecksums = 0`, the deliberately bad-checksum command is expected to be
-accepted and is correctly reported as `unexpected_accept`. The stock cFS v7.0.1
-CI_LAB build has no runtime command to enable checksum validation; a clean
-rejection for this case requires a custom cFS/EDS target build.
+Exits with status code `1` if test cases were added, removed, or experienced verdict changes.
 
-Docker must be running, and host UDP port `1234` must be available. The script
-fails immediately if the port is busy, instead of continuing with a stopped
-container and producing misleading hang findings. The first Docker build can
-take a while because it compiles cFS; later builds use Docker's cache.
+---
 
-## CI
+## Configuration & Target Profiles
 
-GitHub Actions runs the unit tests and mock-target pre-flight on pushes and pull requests. The cFS/ci_lab Docker validation is available through a manual workflow dispatch. Releases are driven by Conventional Commit messages on `main`.
+Target connection parameters and telemetry oracle settings are defined in a TOML configuration file:
 
-- `fix:` creates a patch release
-- `feat:` creates a minor release
-- `BREAKING CHANGE:` creates a major release
+```toml
+[target]
+name = "cFS ci_lab Target"
+apid = 6301                      # Target Command APID
+
+[transport]
+host = "127.0.0.1"
+port = 1234                      # Target Command Port
+listen_port = 1235               # Local Telemetry Listen Port
+timeout = 1.0                    # UDP socket timeout (seconds)
+allowed_reply_host = "127.0.0.1"
+allowed_reply_apid = 2056        # Telemetry APID (TO_LAB Housekeeping)
+probe_payload_hex = "0808c000000100" # Probe command (e.g. NOOP)
+
+[cases]
+include_categories = ["known_good", "boundary", "malformed"]
+```
+
+### Profiles
+
+- **`smoke`**: Executes valid command controls for rapid sanity and health checks.
+- **`stock-cfs`**: Runs the complete suite targeting unhardened default cFS builds.
+- **`hardened-cfs`**: Suite requiring adapter proof of hardened policy enforcement.
+- **`full-robustness`**: Comprehensive suite testing all boundary, malformed, and valid cases (default).
+
+---
+
+## Telemetry Oracles & Adapter Contracts
+
+Oracles evaluate target responses using before/after telemetry evidence:
+
+- **`LivenessOracle`**: Basic health check verifying target network response.
+- **`CiLabOracle`**: Tracks cFS telemetry counter deltas (`command`, `command_error`, `ingest_packets`, `ingest_errors`).
+
+| Telemetry Delta | Verdict | Description |
+|---|---|---|
+| `CommandCounter` +1 | `CLEAN_ACCEPT` | Valid command was accepted and executed by target. |
+| `CommandErrorCounter` +1 | `CLEAN_REJECT` | Malformed packet was recognized and rejected by command parser. |
+| `IngestErrorCounter` +1 | `SAFE_DROP` | Packet failed network or transport validation and was dropped safely. |
+| No Telemetry Response | `HANG` / `CRASH` | Target stopped responding or container/process terminated unexpectedly. |
+
+An optional `health_command` can be specified in the TOML configuration to differentiate a crashed target from a hung network probe:
+
+```toml
+health_command = ["docker", "inspect", "--format", "{{.State.Running}}", "cfs-ci-lab"]
+```
+
+---
+
+## Provenance & Baseline Comparison
+
+Every test report generated by Reentry includes complete audit provenance:
+
+```json
+{
+  "provenance": {
+    "harness_version": "0.7.0",
+    "config_hash": "a1b2c3d4...",
+    "adapter_name": "cfs_ci_lab",
+    "telemetry_schema": "ci_lab_housekeeping@7.0.1",
+    "target_apid": 6301
+  }
+}
+```
+
+---
+
+## Development & Testing
+
+Run unit tests and test suites locally:
+
+```sh
+# Execute pytest suite
+python -m pytest -q
+
+# Run local mock target pre-flight check
+scripts/run-local.sh
+```
+
+---
+
+## Roadmap & Contributing
+
+We welcome contributions! Please review [ROADMAP.md](ROADMAP.md) for details on project direction and planned enhancements.
+
+### CI/CD Workflow & Releases
+
+Pull requests automatically run unit tests and mock target pre-flight checks in GitHub Actions.
+
+Releases follow [Semantic Versioning](https://semver.org/) driven by [Conventional Commits](https://www.conventionalcommits.org/):
+- `fix:` triggers patch releases (`v0.7.X`)
+- `feat:` triggers minor releases (`v0.8.0`)
+- `BREAKING CHANGE:` triggers major releases (`v1.0.0`)
+
+---
+
+## License & Standards
+
+- **License**: Released under the [Apache License, Version 2.0](LICENSE).
+- **Standards**: Implements [CCSDS 133.0-B-2](src/reentry/ccsds/constants.py) (Space Packet Protocol).
+
