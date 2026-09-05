@@ -189,3 +189,43 @@ def test_compare_reports_rejects_invalid_report_schema_without_traceback(tmp_pat
     assert "Invalid value for --baseline/--actual" in result.output
     assert "actual finding at index 0" in result.output
     assert "Traceback" not in result.output
+
+
+def test_compare_reports_rejects_duplicate_finding_names_without_traceback(tmp_path):
+    baseline = tmp_path / "baseline.json"
+    actual = tmp_path / "actual.json"
+    baseline.write_text(
+        json.dumps(
+            {
+                "findings": [
+                    {"name": "case", "verdict": "clean_reject"},
+                    {"name": "case", "verdict": "hang"},
+                ]
+            }
+        )
+    )
+    actual.write_text(json.dumps({"findings": [{"name": "case", "verdict": "clean_reject"}]}))
+
+    result = CliRunner().invoke(
+        app, ["compare", "--baseline", str(baseline), "--actual", str(actual)]
+    )
+
+    assert result.exit_code == 2
+    assert "baseline report contains duplicate" in result.output
+    assert "finding name 'case'" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_compare_reports_identifies_which_json_input_is_invalid(tmp_path):
+    baseline = tmp_path / "baseline.json"
+    actual = tmp_path / "actual.json"
+    baseline.write_text("{")
+    actual.write_text(json.dumps({"findings": [{"name": "case", "verdict": "clean_reject"}]}))
+
+    result = CliRunner().invoke(
+        app, ["compare", "--baseline", str(baseline), "--actual", str(actual)]
+    )
+
+    assert result.exit_code == 2
+    assert "Invalid value for --baseline" in result.output
+    assert "cannot read JSON report" in result.output

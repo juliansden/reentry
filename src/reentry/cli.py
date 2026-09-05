@@ -103,9 +103,12 @@ def compare(
     """Compare two JSON reports and fail when cases or verdicts differ."""
     try:
         baseline_report = json.loads(baseline.read_text())
+    except (OSError, json.JSONDecodeError) as error:
+        raise typer.BadParameter(f"cannot read JSON report: {error}", param_hint="--baseline") from error
+    try:
         actual_report = json.loads(actual.read_text())
     except (OSError, json.JSONDecodeError) as error:
-        raise typer.BadParameter(f"cannot read JSON report: {error}") from error
+        raise typer.BadParameter(f"cannot read JSON report: {error}", param_hint="--actual") from error
 
     try:
         differences = compare_reports(baseline_report, actual_report)

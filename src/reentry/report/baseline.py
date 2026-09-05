@@ -22,6 +22,8 @@ def _findings_by_name(report_name: str, report: dict) -> dict[str, dict[str, str
             raise ValueError(
                 f"{report_name} finding {name!r} must contain a non-empty string 'verdict'"
             )
+        if name in cases:
+            raise ValueError(f"{report_name} report contains duplicate finding name {name!r}")
         cases[name] = {"name": name, "verdict": verdict}
     return cases
 
