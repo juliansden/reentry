@@ -214,6 +214,15 @@ Reports include a `provenance` object, or matching `reentry.*` JUnit properties,
 with the harness version, optional target build and version, resolved target
 identifiers, a SHA-256 hash of the validated configuration, adapter name, and
 telemetry schema identity.
+
+Compare a new JSON report with a checked-in or downloaded baseline in CI:
+
+```sh
+reentry compare --baseline baseline.json --actual report.json --json comparison.json
+```
+
+The command exits with status 1 when a case is added, removed, or changes
+verdict, and writes deterministic difference records when `--json` is used.
 The command-level malformed suite also checks checksum handling. If cFS reports
 `EnableChecksums = 0`, the deliberately bad-checksum command is expected to be
 accepted and is correctly reported as `unexpected_accept`. The stock cFS v7.0.1
