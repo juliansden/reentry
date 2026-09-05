@@ -20,23 +20,46 @@ The current implementation targets CCSDS Space Packets and provides:
 ## Architecture
 
 ```mermaid
-flowchart TD
-    CLI["reentry run"] --> CONFIG["RunConfig<br/>TOML validation"]
-    CONFIG --> PROFILE["Target profile"]
-    PROFILE --> RUNNER["Runner"]
-    RUNNER --> CASES["Boundary case generator"]
-    CASES --> PACKETS["PacketCase bytes"]
-    PACKETS --> UDP["UDPTransport"]
-    UDP --> TARGET["Target under test"]
-    TARGET --> OBSERVE["Liveness reply<br/>or telemetry"]
-    OBSERVE --> ORACLE["Oracle"]
-    ORACLE --> LIVE["LivenessOracle"]
-    ORACLE --> CILAB["CiLabOracle<br/>counter deltas"]
-    LIVE --> RESULT["OracleResult"]
-    CILAB --> RESULT
-    RESULT --> FINDING["Finding"]
-    FINDING --> JSON["JSON report"]
-    FINDING --> JUNIT["JUnit XML report"]
+flowchart LR
+    subgraph INPUT["Run definition"]
+        CLI["CLI: reentry run"] --> CONFIG["RunConfig<br/>TOML and Pydantic validation"]
+        CONFIG --> PROFILE["TargetProfile<br/>case selection"]
+    end
+
+    subgraph EXECUTION["Test execution"]
+        RUNNER["Runner"] --> GENERATOR["Boundary-case generator<br/>generate_all()"]
+        GENERATOR --> CASE["PacketCase<br/>expected outcome + raw bytes"]
+        CASE --> RETARGET["Optional APID retargeting<br/>checksum preservation"]
+        RETARGET --> TRANSPORT["Transport interface<br/>UDPTransport"]
+    end
+
+    subgraph OBSERVATION["Target observation"]
+        TARGET["System under test<br/>mock target or cFS/ci_lab"]
+        REPLY["Reply or timeout"]
+        TELEMETRY["Telemetry evidence<br/>before/after counters"]
+        ORACLE["Oracle implementation"]
+        VERDICT["OracleResult<br/>verdict + evidence + transport status"]
+        TARGET --> REPLY
+        TARGET --> TELEMETRY
+        REPLY --> ORACLE
+        TELEMETRY --> ORACLE
+        ORACLE --> VERDICT
+    end
+
+    subgraph OUTPUT["Reports and CI results"]
+        FINDING["Finding<br/>case + verdict + detail"]
+        JSON["JSON report"]
+        JUNIT["JUnit XML report"]
+        FINDING --> JSON
+        FINDING --> JUNIT
+    end
+
+    PROFILE --> RUNNER
+    RUNNER --> TRANSPORT
+    TRANSPORT --> TARGET
+    ORACLE -.-> LIVE["LivenessOracle<br/>health only"]
+    ORACLE -.-> CILAB["CiLabOracle<br/>counter deltas"]
+    VERDICT --> FINDING
 ```
 
 The cFS/ci_lab integration is a separate, heavier validation path. Its generated message IDs are resolved from the actual cFS build rather than guessed.
