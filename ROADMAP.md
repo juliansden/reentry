@@ -41,8 +41,8 @@ unsafe-verdict gate for now.
 
 ### P1: Configuration and Adapter Contracts
 
-- [ ] Validate configuration values before execution, including hex payloads, ports, APIDs, timeouts, transport kinds, and case categories.
-- [ ] Return actionable CLI errors for invalid TOML and Pydantic configuration instead of raw exceptions.
+- [x] Validate configuration values before execution, including hex payloads, ports, APIDs, timeouts, transport kinds, and case categories.
+- [x] Return actionable CLI errors for invalid TOML and Pydantic configuration instead of raw exceptions.
 - [ ] Add target adapters and documented telemetry schemas.
 - [ ] Define adapter capabilities, telemetry schema/version, required evidence fields, and verdict mapping.
 - [ ] Add target capabilities and evidence signals needed for `hardened-cfs` to enforce stricter expectations without making unsupported claims.
@@ -69,7 +69,7 @@ enforcement mode.
 ### Required Test Coverage
 
 - [x] Test transport errors and confirm they cannot become unsafe target verdicts.
-- [ ] Test invalid hex, port, APID, timeout, transport, and category configuration values.
+- [x] Test invalid hex, port, APID, timeout, transport, and category configuration values.
 - [x] Test stale and delayed telemetry replies, including source and schema filtering.
 - [x] Test structured evidence preservation for before-only, after-only, and transport-failure cases.
 - [ ] Test report provenance and baseline comparison behavior.

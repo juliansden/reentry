@@ -92,3 +92,33 @@ port = 1234
     assert "Invalid value" in result.output
     assert "cannot be combined with include_categories" in result.output
     assert "exclude_categories in the config" in result.output
+
+
+def test_run_reports_invalid_configuration_without_traceback(tmp_path):
+    config = tmp_path / "reentry.toml"
+    config.write_text(
+        """[transport]
+host = "127.0.0.1"
+port = 0
+"""
+    )
+
+    result = CliRunner().invoke(app, ["run", "--config", str(config)])
+
+    assert result.exit_code == 2
+    assert "invalid configuration" in result.output
+    assert "port" in result.output
+    assert "between 1 and 65535" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_run_reports_invalid_toml_without_traceback(tmp_path):
+    config = tmp_path / "reentry.toml"
+    config.write_text("[transport\n")
+
+    result = CliRunner().invoke(app, ["run", "--config", str(config)])
+
+    assert result.exit_code == 2
+    assert "invalid TOML" in result.output
+    assert config.name in result.output
+    assert "Traceback" not in result.output
