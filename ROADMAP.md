@@ -60,6 +60,7 @@ unsafe-verdict gate for now.
 
 - [ ] Extend protocol coverage beyond the current primary-header and ci_lab command focus, including additional CCSDS behavior and transports.
 - [ ] Extend CCSDS packet and transport coverage
+- [ ] Add a separate checksum-enforcing cFS target variant and verify malformed-checksum rejection without changing stock cFS characterization.
 
 The `stock-cfs`, `hardened-cfs`, and `full-robustness` profiles select the same
 generated suite. `hardened-cfs` additionally requires an adapter capability and
