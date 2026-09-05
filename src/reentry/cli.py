@@ -14,6 +14,7 @@ from reentry.harness.profiles import TargetProfile
 from reentry.harness.runner import Runner
 from reentry.report.json_report import to_json
 from reentry.report.junit_report import to_junit_xml
+from reentry.report.provenance import build_provenance
 
 app = typer.Typer(add_completion=False)
 
@@ -64,10 +65,16 @@ def run(
     except ValueError as error:
         raise typer.BadParameter(str(error), param_hint="--config or --profile") from error
 
+    provenance = build_provenance(run_config)
+
     if json_out is not None:
-        json_out.write_text(to_json(findings, profile=run_config.profile))
+        json_out.write_text(
+            to_json(findings, profile=run_config.profile, provenance=provenance)
+        )
     if junit_out is not None:
-        junit_out.write_text(to_junit_xml(findings, profile=run_config.profile))
+        junit_out.write_text(
+            to_junit_xml(findings, profile=run_config.profile, provenance=provenance)
+        )
 
     unsafe = [f for f in findings if f.verdict.is_unsafe]
     for f in unsafe:

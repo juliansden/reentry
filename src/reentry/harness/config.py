@@ -100,6 +100,9 @@ class RunConfig(BaseModel):
     oracle: OracleConfig = OracleConfig()
     profile: TargetProfile | None = None
     health_command: list[str] | None = None
+    target_build: str | None = None
+    target_version: str | None = None
+    resolved_identifiers: dict[str, int | str] = Field(default_factory=dict)
     include_categories: list[str] | None = None
     exclude_categories: list[str] = Field(default_factory=list)
     timeout: float = 2.0

@@ -30,6 +30,8 @@ def _with_checksum(packet: bytes) -> bytes:
 
 TOML_TEMPLATE = """\
 # Auto-rendered by render_config.py from resolve_ids.py's output — do not hand-edit.
+resolved_identifiers = {{ {resolved_identifiers} }}
+
 [transport]
 kind = "udp"
 host = "{host}"
@@ -82,6 +84,9 @@ def main() -> int:
         return 1
 
     payload = build_hk_request_payload(resolved["CI_LAB_SEND_HK_MID"])
+    resolved_identifiers = ", ".join(
+        f"{name} = {value}" for name, value in sorted(resolved.items())
+    )
     args.output.write_text(
         TOML_TEMPLATE.format(
             host=args.host,
@@ -91,6 +96,7 @@ def main() -> int:
             allowed_reply_apid=resolved["CI_LAB_HK_TLM_MID"] & APID_MASK,
             target_apid=resolved["CI_LAB_CMD_MID"] & APID_MASK,
             payload_hex=payload.hex(),
+            resolved_identifiers=resolved_identifiers,
         )
     )
     print(f"wrote {args.output}")

@@ -13,6 +13,8 @@ The current implementation targets CCSDS Space Packets and provides:
 - A pluggable transport interface with a UDP adapter
 - Liveness and ci_lab counter-based oracle implementations
 - JSON and JUnit XML reports
+- Report provenance including harness version, target metadata, configuration hash,
+  adapter, telemetry schema, and resolved target identifiers
 - A CLI: `reentry run` and `reentry list-cases`
 - A local mock target for fast development
 - A Docker build for the cFS/ci_lab validation target
@@ -207,6 +209,11 @@ cleanup. It also writes `report.json` and `report.xml`; malformed cases that
 remain `inconclusive` are recorded there without failing the run by themselves.
 The GitHub Actions cFS job runs on a nightly schedule as well as by manual
 dispatch and archives the real-target JSON report as baseline evidence.
+
+Reports include a `provenance` object, or matching `reentry.*` JUnit properties,
+with the harness version, optional target build and version, resolved target
+identifiers, a SHA-256 hash of the validated configuration, adapter name, and
+telemetry schema identity.
 The command-level malformed suite also checks checksum handling. If cFS reports
 `EnableChecksums = 0`, the deliberately bad-checksum command is expected to be
 accepted and is correctly reported as `unexpected_accept`. The stock cFS v7.0.1

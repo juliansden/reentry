@@ -48,6 +48,18 @@ def test_empty_health_command_is_rejected():
         _config(health_command=[])
 
 
+def test_target_provenance_fields_are_preserved():
+    config = _config(
+        target_build="cfs-abc123",
+        target_version="7.0.1",
+        resolved_identifiers={"CI_LAB_CMD_MID": 0x1880},
+    )
+
+    assert config.target_build == "cfs-abc123"
+    assert config.target_version == "7.0.1"
+    assert config.resolved_identifiers["CI_LAB_CMD_MID"] == 0x1880
+
+
 def test_invalid_transport_kind_is_rejected():
     with pytest.raises(ValidationError, match="only 'udp' is supported"):
         _transport(kind="tcp")

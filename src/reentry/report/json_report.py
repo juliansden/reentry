@@ -9,10 +9,15 @@ from reentry.harness.profiles import TargetProfile
 from reentry.harness.runner import Finding
 
 
-def to_json(findings: list[Finding], profile: TargetProfile | None = None) -> str:
+def to_json(
+    findings: list[Finding],
+    profile: TargetProfile | None = None,
+    provenance: dict[str, object] | None = None,
+) -> str:
     payload = {
         "generated_at": datetime.now(UTC).isoformat(),
         "profile": profile.value if profile is not None else None,
+        "provenance": provenance,
         "findings": [
             {
                 "name": f.case.name,
