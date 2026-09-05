@@ -1,6 +1,20 @@
 # CHANGELOG
 
 
+## v0.6.0 (2026-09-05)
+
+### Features
+
+- Define target adapter contracts
+  ([`b0cb843`](https://github.com/juliansden/reentry/commit/b0cb843ba230087f736ccc8893f437a6e7d78472))
+
+- Enforce adapter profile contracts
+  ([`6455806`](https://github.com/juliansden/reentry/commit/6455806145b4d1eafdcc12c4588ecd2f6418cf59))
+
+- Validate run configuration errors
+  ([`f9dd4b4`](https://github.com/juliansden/reentry/commit/f9dd4b403f60fb7910dd646fe1b7271e410811ab))
+
+
 ## v0.5.0 (2026-09-04)
 
 ### Features
