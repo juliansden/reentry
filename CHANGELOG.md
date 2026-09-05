@@ -1,6 +1,41 @@
 # CHANGELOG
 
 
+## v0.7.0 (2026-09-05)
+
+### Continuous Integration
+
+- Keep cfs regression runs manual
+  ([`0223d09`](https://github.com/juliansden/reentry/commit/0223d09cf8045cec354c26dd136d3c8d80344285))
+
+- Require cfs readiness
+  ([`06d8676`](https://github.com/juliansden/reentry/commit/06d8676517df2ca6b7bc31981eef4176b3fa8c16))
+
+- Schedule cfs baseline regression
+  ([`e3dca22`](https://github.com/juliansden/reentry/commit/e3dca22856422826f14c32a7e0edaae2cf8ca9fe))
+
+### Documentation
+
+- Clarify manual cfs baseline coverage
+  ([`ca1bf2b`](https://github.com/juliansden/reentry/commit/ca1bf2b755201e85a57599863cd3fa16a8600a60))
+
+### Features
+
+- Add report baseline comparison
+  ([`4808a57`](https://github.com/juliansden/reentry/commit/4808a57b6aa44ac57ab210fee311fd2e57dfd54e))
+
+- Add report provenance
+  ([`a633011`](https://github.com/juliansden/reentry/commit/a6330111244baf8b0fd8f14d067911bccf41eaf3))
+
+- Distinguish target crashes from hangs
+  ([`77504a4`](https://github.com/juliansden/reentry/commit/77504a441fba47a9e25312f862ef695cdeec7a4b))
+
+### Testing
+
+- Normalize cli error output
+  ([`88464d2`](https://github.com/juliansden/reentry/commit/88464d2e7a90e95c826df0e12c6e49498253919a))
+
+
 ## v0.6.0 (2026-09-05)
 
 ### Features
