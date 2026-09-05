@@ -43,6 +43,11 @@ def test_invalid_timeout_is_rejected():
         _config(timeout=0)
 
 
+def test_empty_health_command_is_rejected():
+    with pytest.raises(ValidationError, match="health_command must contain"):
+        _config(health_command=[])
+
+
 def test_invalid_transport_kind_is_rejected():
     with pytest.raises(ValidationError, match="only 'udp' is supported"):
         _transport(kind="tcp")

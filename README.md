@@ -166,6 +166,18 @@ configuration (use the build-resolved `target_apid` for real cFS):
 include_categories = ["known_good"]
 ```
 
+An optional external health command can distinguish a crashed target from a
+live target that stopped answering its protocol probe. Configure it as an argv
+array; exit status 0 means alive and any other status, execution error, or
+timeout reports `crash` when the protocol probe also fails:
+
+```toml
+health_command = ["docker", "inspect", "--format", "{{.State.Running}}", "cfs-ci-lab"]
+```
+
+Without `health_command`, the existing no-response result remains `hang` with
+the possible crash ambiguity preserved.
+
 The run must report `clean_accept` and a detail showing `CommandCounter`
 increased. The full suite keeps malformed cases separate: `clean_reject`,
 `safe_drop`, and `inconclusive` are non-unsafe outcomes; only hangs, crashes,

@@ -11,6 +11,8 @@ from reentry.harness.runner import Runner, _build_transport, _load_oracle, _sele
 from reentry.ccsds.packet import PrimaryHeader
 from reentry.oracle.base import Verdict
 from reentry.oracle.ci_lab import CiLabOracle
+from reentry.oracle.liveness import LivenessOracle
+from reentry.harness.health import HealthResult
 from tests.fixtures.mock_target import MockTarget
 
 
@@ -115,6 +117,79 @@ def test_ci_lab_oracle_preserves_before_telemetry_when_target_hangs_after_case()
         },
         "after": None,
     }
+
+
+def test_ci_lab_oracle_classifies_failed_external_health_check_as_crash():
+    counters = bytes(16) + struct.pack(">BBBB", 2, 0, 0, 1) + struct.pack("<II", 10, 0)
+
+    class DeadAfterCaseTransport:
+        last_error = None
+
+        def __init__(self):
+            self.replies = [counters, None]
+
+        def send(self, data: bytes) -> None:
+            pass
+
+        def receive(self, timeout: float) -> bytes | None:
+            return self.replies.pop(0)
+
+    result = CiLabOracle(
+        hk_request_payload_hex="484b3f",
+        health_check=lambda: HealthResult(False, "target process exited with status 1"),
+    ).judge(
+        PacketCase("case", "command_malformed", b"packet", True),
+        DeadAfterCaseTransport(),
+    )
+
+    assert result.verdict == Verdict.CRASH
+    assert result.evidence["health"] == {
+        "alive": False,
+        "detail": "target process exited with status 1",
+    }
+
+
+def test_ci_lab_oracle_checks_external_health_when_target_is_already_unresponsive():
+    class UnresponsiveTransport:
+        last_error = None
+
+        def send(self, data: bytes) -> None:
+            pass
+
+        def receive(self, timeout: float) -> bytes | None:
+            return None
+
+    result = CiLabOracle(
+        hk_request_payload_hex="484b3f",
+        health_check=lambda: HealthResult(False, "target process is not running"),
+    ).judge(
+        PacketCase("case", "command_malformed", b"packet", True),
+        UnresponsiveTransport(),
+    )
+
+    assert result.verdict == Verdict.CRASH
+    assert result.evidence["after"] is None
+
+
+def test_liveness_oracle_keeps_alive_unresponsive_target_as_hang():
+    class UnresponsiveTransport:
+        last_error = None
+
+        def send(self, data: bytes) -> None:
+            pass
+
+        def probe(self, timeout: float) -> bool:
+            return False
+
+        def receive(self, timeout: float) -> bytes | None:
+            return None
+
+    result = LivenessOracle(
+        health_check=lambda: HealthResult(True, "health check reported target alive")
+    ).judge(PacketCase("case", "command_malformed", b"packet", True), UnresponsiveTransport())
+
+    assert result.verdict == Verdict.HANG
+    assert result.evidence["health"]["alive"] is True
 
 
 def test_ci_lab_oracle_classifies_case_send_failure_as_inconclusive():
