@@ -12,6 +12,7 @@ import struct
 from dataclasses import asdict, dataclass
 
 from reentry.generator.cases import PacketCase
+from reentry.harness.adapters import CI_LAB_CONTRACT, AdapterContract
 from reentry.oracle.base import Oracle, OracleResult, Verdict
 from reentry.transport.base import Transport, TransportError
 
@@ -68,6 +69,8 @@ def parse_ingest_counters(hk_packet: bytes) -> tuple[int, int]:
 
 class CiLabOracle(Oracle):
     """Sends an HK request before and after each case and diffs the command counters."""
+
+    adapter_contract: AdapterContract = CI_LAB_CONTRACT
 
     def __init__(self, hk_request_payload_hex: str, probe_timeout: float = 2.0) -> None:
         self._hk_request_payload = bytes.fromhex(hk_request_payload_hex)

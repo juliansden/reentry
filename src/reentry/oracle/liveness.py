@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from reentry.generator.cases import PacketCase
+from reentry.harness.adapters import LIVENESS_CONTRACT, AdapterContract
 from reentry.oracle.base import Oracle, OracleResult, Verdict
 from reentry.transport.base import Transport
 
@@ -14,6 +15,8 @@ class LivenessOracle(Oracle):
     target is still alive — it cannot distinguish a clean reject from an unexpected
     accept, so anything that isn't CRASH/HANG is reported INCONCLUSIVE.
     """
+
+    adapter_contract: AdapterContract = LIVENESS_CONTRACT
 
     def __init__(self, probe_timeout: float = 2.0) -> None:
         self._probe_timeout = probe_timeout

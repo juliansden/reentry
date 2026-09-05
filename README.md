@@ -68,12 +68,31 @@ reentry run --config target.toml --profile smoke
 - `smoke` runs the known-good command control for fast valid-command and liveness checks.
 - `stock-cfs` runs the complete suite to characterize the target as shipped.
 - `hardened-cfs` runs the complete suite while labeling the target's intended stricter policy.
-- `full-robustness` runs the complete malformed and boundary suite.
 
 Profiles do not alter observed oracle verdicts. JSON and JUnit reports record
 the selected profile, verdict, detail, and per-case telemetry evidence.
 `INCONCLUSIVE` remains inconclusive; `UNEXPECTED_ACCEPT`, `HANG`, and `CRASH`
 fail the run.
+
+### Target adapter contracts
+
+Each oracle declares an adapter contract in `reentry.harness.adapters`. The
+generic liveness adapter reports target health only and has no telemetry schema,
+so it cannot distinguish acceptance from rejection. The cFS/ci_lab adapter uses
+the version `7.0.1` `ci_lab_housekeeping` schema with these fields:
+
+- `command`
+- `command_error`
+- `enable_checksums`
+- `socket_connected`
+- `ingest_packets`
+- `ingest_errors`
+
+The cFS adapter maps command-error deltas to `clean_reject`, ingest-error
+deltas to `safe_drop`, command deltas to `clean_accept`, missing after-telemetry
+to `hang`, and transport failures to `inconclusive`. Neither current adapter
+claims hardened-policy enforcement; `hardened-cfs` remains a policy label until
+the target exposes a reliable enforcement signal.
 
 Run against the local mock target:
 

@@ -43,8 +43,8 @@ unsafe-verdict gate for now.
 
 - [x] Validate configuration values before execution, including hex payloads, ports, APIDs, timeouts, transport kinds, and case categories.
 - [x] Return actionable CLI errors for invalid TOML and Pydantic configuration instead of raw exceptions.
-- [ ] Add target adapters and documented telemetry schemas.
-- [ ] Define adapter capabilities, telemetry schema/version, required evidence fields, and verdict mapping.
+- [x] Add target adapters and documented telemetry schemas.
+- [x] Define adapter capabilities, telemetry schema/version, required evidence fields, and verdict mapping.
 - [ ] Add target capabilities and evidence signals needed for `hardened-cfs` to enforce stricter expectations without making unsupported claims.
 - [ ] Define profile-specific evidence and verdict requirements where targets expose the needed signals.
 
