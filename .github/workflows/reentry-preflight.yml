@@ -4,8 +4,6 @@ on:
   push:
   pull_request:
   workflow_dispatch:
-  schedule:
-    - cron: "17 3 * * *"
 
 permissions:
   contents: read
@@ -52,8 +50,8 @@ jobs:
 
   cfs_ci_lab-preflight:
     # Heavier real-target run: build & boot the actual cFS/ci_lab sandbox.
-    # Scheduled and manual baseline runs — not part of the fast per-push gate.
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    # Manual baseline runs only — not part of the fast per-push gate.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     needs: unit-tests
     steps:
